@@ -29,7 +29,7 @@ export default function SystemNav({ activeTab, onTabChange, username, level }: S
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-widest text-white leading-none">
-                THE MONARCH DEV
+                THE DEV MONARCH
               </h1>
               <p className="text-[10px] text-cyan-400/60 uppercase tracking-[0.3em] mt-0.5">
                 Hunter System Interface

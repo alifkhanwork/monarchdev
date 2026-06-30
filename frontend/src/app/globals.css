@@ -1,0 +1,315 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-system: 'Rajdhani', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply text-white antialiased;
+    font-family: var(--font-system);
+    background-color: #050a14;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(6, 182, 212, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 80% 100%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 30% at 10% 80%, rgba(20, 184, 166, 0.06) 0%, transparent 50%),
+      linear-gradient(rgba(34, 211, 238, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    min-height: 100dvh;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-xl border border-cyan-500/30 bg-slate-900/40 backdrop-blur-md p-4 shadow-glow;
+  }
+
+  .panel-header {
+    @apply flex items-start justify-between gap-3 pb-3 border-b border-cyan-500/15;
+  }
+
+  .panel-label {
+    @apply text-xs uppercase tracking-[0.2em] text-cyan-400 font-semibold;
+  }
+
+  .text-glow-cyan {
+    @apply text-cyan-300;
+    text-shadow: 0 0 20px rgba(34, 211, 238, 0.5), 0 0 40px rgba(34, 211, 238, 0.2);
+  }
+
+  .text-glow-gold {
+    @apply text-amber-300;
+    text-shadow: 0 0 24px rgba(251, 191, 36, 0.45), 0 0 48px rgba(251, 191, 36, 0.15);
+  }
+
+  .gear-card {
+    @apply relative flex flex-col p-4 min-h-[180px] border backdrop-blur-sm overflow-hidden;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  }
+
+  .milestone-quest-card {
+    @apply glass-panel p-4 border-cyan-500/20 hover:border-cyan-400/30 transition-colors;
+  }
+
+  .milestone-quest-ssr {
+    @apply border-amber-500/25 hover:border-amber-400/35;
+  }
+
+  .milestone-quest-done {
+    @apply opacity-70;
+  }
+
+  .exp-bar-fill {
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .penalty-banner {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.15);
+  }
+
+  .penalty-dismiss-btn {
+    @apply px-4 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10
+           text-red-300 text-xs font-semibold uppercase tracking-wider
+           hover:bg-red-500/20 transition-all;
+  }
+
+  .grind-btn {
+    @apply px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-all disabled:opacity-40;
+  }
+
+  .grind-btn-plus {
+    @apply border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20;
+  }
+
+  .grind-btn-minus {
+    @apply border-slate-600/40 bg-slate-800/40 text-slate-400 hover:bg-slate-700/40;
+  }
+
+  .gear-card-locked {
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  }
+
+  .level-up-flash {
+    animation: levelUpFlash 1.5s ease-out forwards;
+    background: radial-gradient(ellipse at center, rgba(34, 211, 238, 0.25) 0%, transparent 70%);
+  }
+
+  .level-up-banner {
+    @apply rounded-xl border border-cyan-400/60 bg-slate-950/90 backdrop-blur-md;
+    box-shadow: 0 0 60px rgba(34, 211, 238, 0.4);
+  }
+
+  .nav-tab {
+    @apply flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 border;
+  }
+
+  .nav-tab-active {
+    @apply border-cyan-400/50 bg-cyan-500/15 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.15)];
+  }
+
+  .nav-tab-inactive {
+    @apply border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 hover:border-slate-700/50;
+  }
+
+  .tab-content {
+    @apply animate-fade-in;
+  }
+
+  .quest-item {
+    @apply flex items-center gap-3 p-3 rounded-lg border border-cyan-500/15 bg-slate-900/30
+           hover:border-cyan-400/35 hover:bg-cyan-500/5 transition-all duration-200
+           disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .quest-item-done {
+    @apply border-slate-700/30 bg-slate-900/20;
+  }
+
+  .quest-item-flash {
+    animation: questFlash 0.6s ease-out;
+  }
+
+  .quest-checkbox {
+    @apply w-5 h-5 rounded border-2 border-cyan-500/40 flex items-center justify-center
+           text-xs text-cyan-300 shrink-0;
+  }
+
+  .quest-checkbox-done {
+    @apply bg-cyan-500/20 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.4)];
+  }
+
+  .quest-native-checkbox {
+    @apply w-4 h-4 rounded border-cyan-500/40 bg-slate-900 accent-cyan-400 shrink-0;
+  }
+
+  .journal-textarea {
+    @apply w-full rounded-lg border border-cyan-500/25 bg-slate-950/50 px-4 py-3
+           text-sm text-white placeholder:text-slate-600 resize-none
+           focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/25
+           focus:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all duration-200;
+  }
+
+  .system-btn {
+    @apply px-6 py-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10
+           text-cyan-300 text-sm font-semibold uppercase tracking-wider
+           hover:bg-cyan-500/20 hover:shadow-glow transition-all;
+  }
+
+  .level-up-modal {
+    @apply rounded-xl border border-cyan-400/50 bg-slate-900/90 backdrop-blur-md shadow-glow-strong
+           animate-pulse-glow;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(34, 211, 238, 0.25) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(34, 211, 238, 0.25);
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulseGlow {
+    0%,
+    100% {
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(34, 211, 238, 0.4);
+    }
+  }
+
+  @keyframes questFlash {
+    0% {
+      box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+      border-color: rgba(34, 211, 238, 0.15);
+    }
+    40% {
+      box-shadow: 0 0 24px rgba(34, 211, 238, 0.5);
+      border-color: rgba(34, 211, 238, 0.7);
+      background-color: rgba(34, 211, 238, 0.08);
+    }
+    100% {
+      box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+      border-color: rgba(34, 211, 238, 0.15);
+    }
+  }
+
+  @keyframes levelUpFlash {
+    0% {
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .animate-level-up {
+    animation: levelUpPop 1.5s ease-out forwards;
+  }
+
+  @keyframes levelUpPop {
+    0% {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    20% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    80% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
+  .quest-log-input {
+    @apply w-16 text-right text-xs tabular-nums bg-slate-950/70 border border-cyan-500/25 rounded px-2 py-1 text-cyan-300 focus:outline-none focus:border-cyan-400/50;
+  }
+
+  .workout-bulk-btn {
+    @apply text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .workout-bulk-btn-muted {
+    @apply border-slate-600/40 bg-slate-800/40 text-slate-400 hover:bg-slate-800/60;
+  }
+
+  .lifetime-stat-card {
+    @apply rounded-lg border border-cyan-500/20 bg-slate-950/40 p-5 text-center;
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.04);
+  }
+
+  .lifetime-badge {
+    @apply relative inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border;
+  }
+
+  .lifetime-badge-locked {
+    @apply border-slate-700/50 bg-slate-900/50 text-slate-600;
+  }
+
+  .lifetime-badge-unlocked {
+    @apply border-amber-400/40 bg-amber-500/10 text-amber-300;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+    animation: badgeUnlock 0.8s ease-out;
+  }
+
+  .lifetime-badge-glow {
+    @apply absolute inset-0 rounded-full;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.25) 0%, transparent 70%);
+    animation: levelUpFlash 0.8s ease-out;
+  }
+
+  @keyframes badgeUnlock {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+}

@@ -1,0 +1,149 @@
+const express = require('express');
+const { getPlayer } = require('../utils/getPlayer');
+const { calculateTotalPower } = require('../utils/totalPower');
+const { getNextRank, RANK_LADDER } = require('../utils/ranks');
+const { formatLifetimeStatsResponse } = require('../utils/lifetimeStats');
+
+const router = express.Router();
+
+const formatItem = (item) => {
+  if (!item) return null;
+  return {
+    _id: item._id,
+    name: item.name,
+    type: item.type,
+    rarity: item.rarity,
+    statMultiplier: item.statMultiplier,
+    unlockCondition: item.unlockCondition,
+    imageUrl: item.imageUrl,
+    description: item.description,
+  };
+};
+
+const formatUserResponse = (user) => {
+  const { totalPower, effectiveStats } = calculateTotalPower(
+    user,
+    user.equippedWeapon,
+    user.equippedRelic
+  );
+
+  return {
+    username: user.username,
+    currentAge: user.currentAge ?? 20,
+    level: user.level,
+    currentExp: user.currentExp,
+    expToNextLevel: user.expToNextLevel,
+    stats: user.stats,
+    effectiveStats,
+    totalPower,
+    statHistory: user.statHistory || [],
+    streak: {
+      current: user.currentStreak || 0,
+      best: user.bestStreak || 0,
+    },
+    nextRank: getNextRank(user.level, totalPower),
+    rankLadder: RANK_LADDER,
+    equippedTitle: user.equippedTitle,
+    availableTitles: user.availableTitles,
+    equippedWeapon: formatItem(user.equippedWeapon),
+    equippedRelic: formatItem(user.equippedRelic),
+    inventory: (user.inventory || []).map(formatItem).filter(Boolean),
+    lifetimeStats: formatLifetimeStatsResponse(user),
+    dayCompletionLog: user.dayCompletionLog || [],
+  };
+};
+
+// GET /api/user - Fetch player stats, loadout, and total power
+router.get('/', async (req, res) => {
+  try {
+    const user = await getPlayer();
+    res.json(formatUserResponse(user));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch user', error: error.message });
+  }
+});
+
+// PATCH /api/user/age - Update player's current age (Quest Board default filter)
+router.patch('/age', async (req, res) => {
+  try {
+    const { currentAge } = req.body;
+    const parsed = Number(currentAge);
+    if (Number.isNaN(parsed) || parsed < 10 || parsed > 120) {
+      return res.status(400).json({ message: 'Age must be between 10 and 120' });
+    }
+
+    const user = await getPlayer();
+    user.currentAge = parsed;
+    await user.save();
+
+    res.json({ currentAge: user.currentAge });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update age', error: error.message });
+  }
+});
+
+// PATCH /api/user/title - Update equipped title
+router.patch('/title', async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    const user = await getPlayer();
+    if (!user.availableTitles.includes(title)) {
+      return res.status(400).json({ message: 'Title not available' });
+    }
+
+    user.equippedTitle = title;
+    await user.save();
+
+    res.json({ equippedTitle: user.equippedTitle });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update title', error: error.message });
+  }
+});
+
+// PATCH /api/user/equip - Equip weapon or relic from inventory
+router.patch('/equip', async (req, res) => {
+  try {
+    const { itemId, slot } = req.body;
+    if (!itemId || !['weapon', 'relic'].includes(slot)) {
+      return res.status(400).json({ message: 'itemId and slot (weapon|relic) are required' });
+    }
+
+    const user = await getPlayer();
+    const ownsItem = user.inventory.some((id) => id.toString() === itemId);
+    if (!ownsItem) {
+      return res.status(400).json({ message: 'Item not in inventory' });
+    }
+
+    if (slot === 'weapon') {
+      user.equippedWeapon = itemId;
+    } else {
+      user.equippedRelic = itemId;
+    }
+
+    await user.save();
+    const updated = await getPlayer();
+    res.json(formatUserResponse(updated));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to equip item', error: error.message });
+  }
+});
+
+// POST /api/user/dismiss-penalty
+router.post('/dismiss-penalty', async (req, res) => {
+  try {
+    const user = await getPlayer();
+    if (user.pendingPenalty) {
+      user.pendingPenalty.dismissed = true;
+      await user.save();
+    }
+    res.json({ message: 'Penalty dismissed' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to dismiss penalty', error: error.message });
+  }
+});
+
+module.exports = router;

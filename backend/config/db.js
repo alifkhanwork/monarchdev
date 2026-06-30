@@ -1,17 +1,24 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
-const migrateDailyTasks = require('../utils/migrateDailyTasks');
+
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
+  if (cached.conn) {
+    return cached.conn;
+  }
+
   const uri = process.env.MONGO_URI?.trim();
 
   if (!uri) {
     console.error('❌ MONGO_URI not found in environment variables');
-    process.exit(1);
+    throw new Error('MONGO_URI not configured');
   }
 
-  // Local DNS often fails SRV lookups for Atlas (querySrv ECONNREFUSED).
-  // Use Google DNS for mongodb+srv resolution — same fix as svg-crm backend.
   if (uri.startsWith('mongodb+srv://')) {
     dns.setServers(['8.8.8.8', '8.8.4.4']);
     if (dns.setDefaultResultOrder) {
@@ -19,25 +26,34 @@ const connectDB = async () => {
     }
   }
 
-  try {
-    const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
-    });
-    console.log(`✅ MongoDB connected → ${conn.connection.host}`);
-    await migrateDailyTasks();
-  } catch (error) {
-    console.error(`❌ MongoDB connection failed → ${error.message}`);
+  if (!cached.promise) {
+    cached.promise = mongoose
+      .connect(uri, {
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
+        bufferCommands: false,
+      })
+      .then((mongooseInstance) => {
+        console.log(`✅ MongoDB connected → ${mongooseInstance.connection.host}`);
+        return mongooseInstance;
+      })
+      .catch((error) => {
+        cached.promise = null;
+        console.error(`❌ MongoDB connection failed → ${error.message}`);
 
-    if (error.message.includes('querySrv ECONNREFUSED')) {
-      console.error(
-        '💡 Tip: Use the "Standard" connection string from Atlas (Connect → Drivers → Standard) in MONGO_URI.'
-      );
-    }
+        if (error.message.includes('querySrv ECONNREFUSED')) {
+          console.error(
+            '💡 Tip: Use the "Standard" connection string from Atlas (Connect → Drivers → Standard) in MONGO_URI.'
+          );
+        }
 
-    process.exit(1);
+        throw error;
+      });
   }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
 };
 
 module.exports = connectDB;

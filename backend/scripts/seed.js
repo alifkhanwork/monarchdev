@@ -169,6 +169,15 @@ const seedData = async () => {
   }
 
   // Backfill lifetime-tracking quests for existing databases
+  await DailyTask.updateMany(
+    { category: 'Physical' },
+    { $set: { category: 'Health' } }
+  );
+  await DailyTask.updateMany(
+    { category: { $nin: ['Foundation', 'Health', 'Mental', 'Professional'] } },
+    { $set: { category: 'Health' } }
+  );
+
   await DailyTask.updateOne(
     { taskName: 'Study / skill practice (1 hr)' },
     {

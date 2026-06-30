@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
+const migrateDailyTasks = require('../utils/migrateDailyTasks');
 
 const connectDB = async () => {
   const uri = process.env.MONGO_URI?.trim();
@@ -25,6 +26,7 @@ const connectDB = async () => {
       connectTimeoutMS: 10000,
     });
     console.log(`✅ MongoDB connected → ${conn.connection.host}`);
+    await migrateDailyTasks();
   } catch (error) {
     console.error(`❌ MongoDB connection failed → ${error.message}`);
 

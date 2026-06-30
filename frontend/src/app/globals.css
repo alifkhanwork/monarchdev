@@ -274,6 +274,16 @@
     @apply border-slate-600/40 bg-slate-800/40 text-slate-400 hover:bg-slate-800/60;
   }
 
+  .journal-action-btn {
+    @apply text-[10px] uppercase tracking-wider font-semibold px-3 py-1.5 rounded border
+           border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .journal-action-btn-muted {
+    @apply border-slate-600/40 bg-slate-800/40 text-slate-400 hover:bg-slate-800/60;
+  }
+
   .lifetime-stat-card {
     @apply rounded-lg border border-cyan-500/20 bg-slate-950/40 p-5 text-center;
     box-shadow: 0 0 20px rgba(34, 211, 238, 0.04);

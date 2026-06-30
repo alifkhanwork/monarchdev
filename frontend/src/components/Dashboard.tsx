@@ -18,25 +18,18 @@ import MonthlyGrindTab from '@/components/tabs/MonthlyGrindTab';
 import PlayerProfileTab from '@/components/tabs/PlayerProfileTab';
 import QuestBoardTab from '@/components/tabs/QuestBoardTab';
 import LevelUpToast from '@/components/LevelUpToast';
-
-const JOURNAL_KEY = 'the-system-journal';
-const JOURNAL_DATE_KEY = 'the-system-journal-date';
+import {
+  getTodayKey,
+  loadJournalForDate,
+  migrateLegacyJournal,
+  saveJournalForDate,
+} from '@/lib/journalStorage';
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 
-function getTodayKey() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function loadJournal(): string {
-  if (typeof window === 'undefined') return '';
-  const savedDate = localStorage.getItem(JOURNAL_DATE_KEY);
-  if (savedDate !== getTodayKey()) {
-    localStorage.removeItem(JOURNAL_KEY);
-    localStorage.setItem(JOURNAL_DATE_KEY, getTodayKey());
-    return '';
-  }
-  return localStorage.getItem(JOURNAL_KEY) || '';
+function loadTodayJournal(): string {
+  migrateLegacyJournal();
+  return loadJournalForDate(getTodayKey());
 }
 
 export default function Dashboard() {
@@ -51,8 +44,13 @@ export default function Dashboard() {
   const [flashingId, setFlashingId] = useState<string | null>(null);
   const [levelUps, setLevelUps] = useState<number[]>([]);
   const [workoutSyncing, setWorkoutSyncing] = useState(false);
+  const [journalSaving, setJournalSaving] = useState(false);
 
-  const journalFilled = journalEntry.trim().length >= 10;
+  const journalTask = dailies?.tasks.find((t) =>
+    t.taskName.toLowerCase().includes('journal')
+  );
+  const journalFilled =
+    journalEntry.trim().length >= 10 || (journalTask?.isCompleted ?? false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -78,14 +76,47 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    setJournalEntry(loadJournal());
+    setJournalEntry(loadTodayJournal());
     fetchAll();
   }, [fetchAll]);
 
-  const handleJournalChange = (value: string) => {
-    setJournalEntry(value);
-    localStorage.setItem(JOURNAL_KEY, value);
-    localStorage.setItem(JOURNAL_DATE_KEY, getTodayKey());
+  useEffect(() => {
+    if (activeTab === 'daily') {
+      setJournalEntry(loadJournalForDate(getTodayKey()));
+    }
+  }, [activeTab]);
+
+  const handleJournalSave = async (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed.length < 10) {
+      alert('Journal must be at least 10 characters.');
+      return;
+    }
+
+    setJournalSaving(true);
+    try {
+      saveJournalForDate(getTodayKey(), trimmed);
+      setJournalEntry(trimmed);
+
+      if (dailies && !dailies.dayStatus.isFrozen && journalTask && !journalTask.isCompleted) {
+        setCompletingId(journalTask._id);
+        const result = await api.completeTask(journalTask._id);
+        applyUserUpdate(result.user);
+        updateTaskInDailies(journalTask._id, true);
+        setFlashingId(journalTask._id);
+        setTimeout(() => setFlashingId(null), 600);
+        if (result.levelUps.length > 0) {
+          setLevelUps(result.levelUps);
+        }
+        const freshUser = await api.getUser();
+        setUser(freshUser);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save journal');
+    } finally {
+      setCompletingId(null);
+      setJournalSaving(false);
+    }
   };
 
   const applyUserUpdate = (
@@ -327,7 +358,9 @@ export default function Dashboard() {
             journalEntry={journalEntry}
             journalFilled={journalFilled}
             penalty={dailies.penalty}
-            onJournalChange={handleJournalChange}
+            onJournalSave={handleJournalSave}
+            journalSaving={journalSaving}
+            journalQuestCompleted={journalTask?.isCompleted ?? false}
             onToggleTask={handleToggleTask}
             onToggleExercise={handleToggleExercise}
             onCompleteAllExercises={handleCompleteAllExercises}

@@ -1,11 +1,14 @@
 'use client';
 
 import type { DayCompletionEntry } from '@/types';
+import { formatJournalDateLabel, getTodayKey, hasJournalForDate } from '@/lib/journalStorage';
 
 interface StreakCalendarProps {
   dayCompletionLog: DayCompletionEntry[];
   currentStreak: number;
   bestStreak: number;
+  selectedDate: string;
+  onSelectDate: (dateKey: string) => void;
 }
 
 const STATUS_STYLES: Record<DayCompletionEntry['status'], string> = {
@@ -29,17 +32,21 @@ export default function StreakCalendar({
   dayCompletionLog,
   currentStreak,
   bestStreak,
+  selectedDate,
+  onSelectDate,
 }: StreakCalendarProps) {
   const days = getLastNDays(28);
   const logMap = new Map(dayCompletionLog.map((e) => [e.date, e.status]));
-  const todayKey = new Date().toISOString().split('T')[0];
+  const todayKey = getTodayKey();
 
   return (
     <div className="glass-panel">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <p className="panel-label">Streak Calendar</p>
-          <p className="text-[10px] text-slate-500 mt-1">Last 28 days — complete, missed, or frozen</p>
+          <p className="text-[10px] text-slate-500 mt-1">
+            Click a day to view or edit its journal
+          </p>
         </div>
         <div className="flex gap-4 text-xs">
           <span className="text-cyan-300">
@@ -55,20 +62,29 @@ export default function StreakCalendar({
         {days.map((date) => {
           const status = logMap.get(date);
           const isToday = date === todayKey;
+          const isSelected = date === selectedDate;
           const dayNum = new Date(date + 'T12:00:00').getDate();
+          const hasJournal = hasJournalForDate(date);
 
           return (
-            <div
+            <button
               key={date}
-              title={`${date}${status ? ` — ${status}` : ''}`}
-              className={`aspect-square rounded-md border flex items-center justify-center text-[10px] sm:text-xs tabular-nums ${
+              type="button"
+              onClick={() => onSelectDate(date)}
+              title={`${formatJournalDateLabel(date)}${status ? ` — ${status}` : ''}${hasJournal ? ' — journal saved' : ''}`}
+              className={`aspect-square rounded-md border flex flex-col items-center justify-center text-[10px] sm:text-xs tabular-nums transition-all hover:brightness-125 ${
                 status
                   ? STATUS_STYLES[status]
                   : 'bg-slate-900/50 border-slate-700/40 text-slate-600'
-              } ${isToday ? 'ring-1 ring-cyan-400/60' : ''}`}
+              } ${isToday ? 'ring-1 ring-cyan-400/60' : ''} ${
+                isSelected ? 'ring-2 ring-cyan-400 scale-105 z-10' : ''
+              }`}
             >
-              {dayNum}
-            </div>
+              <span>{dayNum}</span>
+              {hasJournal && (
+                <span className="w-1 h-1 rounded-full bg-emerald-400 mt-0.5" aria-hidden />
+              )}
+            </button>
           );
         })}
       </div>
@@ -85,6 +101,10 @@ export default function StreakCalendar({
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-amber-500/20 border border-amber-400/40" />
           Frozen
+        </span>
+        <span className="flex items-center gap-1.5 normal-case">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Journal saved
         </span>
       </div>
     </div>

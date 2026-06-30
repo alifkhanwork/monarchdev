@@ -242,31 +242,10 @@ export default function DailyTaskList({
               <span className="text-[10px] normal-case px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
                 {DAY_TYPE_LABELS[dayType] || dayType}
               </span>
-              <span className="text-[10px] text-slate-500 tabular-nums ml-auto">
+              <span className="text-[10px] text-slate-500 tabular-nums">
                 {workoutDoneCount}/{workoutTotal}
               </span>
-            </div>
-
-            {workoutQuest && (
-              <p className="text-[10px] text-slate-500 mb-2 px-1">
-                Reward:{' '}
-                <span className="text-amber-400/90 font-semibold">
-                  +{workoutQuest.expReward} EXP · {workoutQuest.statModifier.toUpperCase()}
-                </span>
-              </p>
-            )}
-
-            {workoutCompleted && workoutQuest && (
-              <div className="mb-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-                <p className="text-xs font-semibold text-emerald-400">
-                  ✓ Workout complete — +{workoutQuest.expReward} EXP · +1{' '}
-                  {workoutQuest.statModifier.toUpperCase()}
-                </p>
-              </div>
-            )}
-
-            <div className="rounded-lg border border-cyan-500/20 bg-slate-900/40 p-3 space-y-2.5">
-              <div className="flex justify-end gap-2 pb-1 border-b border-slate-800/80">
+              <div className="ml-auto">
                 {!workoutCompleted ? (
                   <button
                     type="button"
@@ -287,33 +266,60 @@ export default function DailyTaskList({
                   </button>
                 )}
               </div>
+            </div>
+
+            {workoutQuest && (
+              <p className="text-[10px] text-slate-500 mb-2 px-1">
+                Reward:{' '}
+                <span className="text-amber-400/90 font-semibold">
+                  +{workoutQuest.expReward} EXP · {workoutQuest.statModifier.toUpperCase()}
+                </span>
+              </p>
+            )}
+
+            {workoutCompleted && workoutQuest && (
+              <div className="mb-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+                <p className="text-xs font-semibold text-emerald-400">
+                  ✓ Workout complete — +{workoutQuest.expReward} EXP · +1{' '}
+                  {workoutQuest.statModifier.toUpperCase()}
+                </p>
+              </div>
+            )}
+
+            <ul className="space-y-2">
               {workout.exercises.map((exercise) => (
-                <label
-                  key={exercise._id}
-                  className="flex items-center gap-3 cursor-pointer group"
-                >
-                  <input
-                    type="checkbox"
-                    checked={exercise.completed}
+                <li key={exercise._id}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleExercise(workout._id, exercise._id)}
                     disabled={isFrozen || workoutSyncing}
-                    onChange={() => onToggleExercise(workout._id, exercise._id)}
-                    className="quest-native-checkbox"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-sm ${
-                        exercise.completed ? 'text-slate-500 line-through' : 'text-white'
+                    className={`quest-item w-full text-left ${
+                      exercise.completed ? 'quest-item-done' : ''
+                    }`}
+                  >
+                    <span
+                      className={`quest-checkbox ${
+                        exercise.completed ? 'quest-checkbox-done' : ''
                       }`}
                     >
-                      {exercise.name}
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      {exercise.sets} sets · {exercise.repRange}
-                    </p>
-                  </div>
-                </label>
+                      {exercise.completed && '✓'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-sm ${
+                          exercise.completed ? 'line-through text-slate-500' : 'text-white'
+                        }`}
+                      >
+                        {exercise.name}
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {exercise.sets} sets · {exercise.repRange}
+                      </p>
+                    </div>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </section>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import type { DailiesResponse, DailyTask, PenaltyInfo, User, WorkoutSyncResponse } from '@/types';
+import type { DailiesResponse, DailyTask, PenaltyInfo, User } from '@/types';
 import ExpProgressBar from './ExpProgressBar';
 import DailyTaskList from './DailyTaskList';
 import JournalPanel from './JournalPanel';
@@ -12,7 +12,9 @@ interface DailyGrindTabProps {
   journalEntry: string;
   journalFilled: boolean;
   penalty: PenaltyInfo | null;
-  onJournalChange: (value: string) => void;
+  onJournalSave: (text: string) => void | Promise<void>;
+  journalSaving?: boolean;
+  journalQuestCompleted?: boolean;
   onToggleTask: (taskId: string, isCompleted: boolean) => void;
   onToggleExercise: (workoutId: string, exerciseId: string) => void;
   onCompleteAllExercises: (workoutId: string) => void;
@@ -32,7 +34,9 @@ export default function DailyGrindTab({
   journalEntry,
   journalFilled,
   penalty,
-  onJournalChange,
+  onJournalSave,
+  journalSaving = false,
+  journalQuestCompleted = false,
   onToggleTask,
   onToggleExercise,
   onCompleteAllExercises,
@@ -84,8 +88,11 @@ export default function DailyGrindTab({
         <div className="lg:col-span-2 min-h-[360px] lg:min-h-0">
           <JournalPanel
             journalEntry={journalEntry}
-            onJournalChange={onJournalChange}
+            onSave={onJournalSave}
             isFrozenDay={dailies.dayStatus.isFrozen}
+            isToday
+            isSaving={journalSaving}
+            questCompleted={journalQuestCompleted}
           />
         </div>
       </div>

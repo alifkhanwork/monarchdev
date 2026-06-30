@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { User } from '@/types';
+import { api } from '@/lib/api';
 import StatRadarChart from '@/components/profile/StatRadarChart';
 import StatSparkline from '@/components/profile/StatSparkline';
 import RankPreview from '@/components/profile/RankPreview';
@@ -8,6 +10,13 @@ import GearCard from '@/components/profile/GearCard';
 import LockedGearSlot from '@/components/profile/LockedGearSlot';
 import StreakCalendar from '@/components/profile/StreakCalendar';
 import LifetimeStatsSection from '@/components/profile/LifetimeStatsSection';
+import JournalPanel from '@/components/tabs/JournalPanel';
+import {
+  formatJournalDateLabel,
+  getTodayKey,
+  loadJournalForDate,
+  saveJournalForDate,
+} from '@/lib/journalStorage';
 
 interface PlayerProfileTabProps {
   user: User;
@@ -25,6 +34,36 @@ const STAT_LABELS: Record<string, string> = {
 export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileTabProps) {
   const stats = user.effectiveStats ?? user.stats;
   const history = user.statHistory || [];
+  const [selectedDate, setSelectedDate] = useState(getTodayKey);
+  const [journalEntry, setJournalEntry] = useState('');
+
+  useEffect(() => {
+    setJournalEntry(loadJournalForDate(selectedDate));
+  }, [selectedDate]);
+
+  const handleJournalSave = async (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed.length < 10) {
+      alert('Journal must be at least 10 characters.');
+      return;
+    }
+    saveJournalForDate(selectedDate, trimmed);
+    setJournalEntry(trimmed);
+
+    if (selectedDate === getTodayKey()) {
+      try {
+        const dailies = await api.getDailies();
+        const journalTask = dailies.tasks.find((t) =>
+          t.taskName.toLowerCase().includes('journal')
+        );
+        if (journalTask && !journalTask.isCompleted && !dailies.dayStatus.isFrozen) {
+          await api.completeTask(journalTask._id);
+        }
+      } catch {
+        // Quest sync is best-effort from profile view
+      }
+    }
+  };
 
   const getHistoryValues = (key: keyof typeof stats) =>
     history.map((h) => h.stats[key] ?? stats[key]);
@@ -97,6 +136,15 @@ export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileT
         dayCompletionLog={user.dayCompletionLog || []}
         currentStreak={user.streak.current}
         bestStreak={user.streak.best}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+
+      <JournalPanel
+        journalEntry={journalEntry}
+        onSave={handleJournalSave}
+        viewDateLabel={formatJournalDateLabel(selectedDate)}
+        isToday={selectedDate === getTodayKey()}
       />
 
       {user.lifetimeStats && <LifetimeStatsSection lifetimeStats={user.lifetimeStats} />}

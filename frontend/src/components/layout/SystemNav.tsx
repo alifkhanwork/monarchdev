@@ -17,12 +17,19 @@ export default function SystemNav({ activeTab, onTabChange, username, level }: S
         {/* Brand row */}
         <div className="flex items-center justify-between py-3 border-b border-cyan-500/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg border border-cyan-400/40 bg-cyan-500/10 flex items-center justify-center text-cyan-300 text-sm font-bold shadow-[0_0_20px_rgba(34,211,238,0.15)]">
-              S
+            <div className="w-9 h-9 rounded-lg border border-cyan-400/40 bg-cyan-500/10 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.15)]">
+              <img
+                src="/crown.svg"
+                alt=""
+                width={20}
+                height={20}
+                className="drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]"
+                aria-hidden
+              />
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-widest text-white leading-none">
-                THE SYSTEM
+                THE MONARCH DEV
               </h1>
               <p className="text-[10px] text-cyan-400/60 uppercase tracking-[0.3em] mt-0.5">
                 Hunter Interface

@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import type { DayCompletionEntry } from '@/types';
 import { formatJournalDateLabel, getTodayKey, hasJournalForDate } from '@/lib/journalStorage';
 
@@ -11,21 +12,24 @@ interface StreakCalendarProps {
   onSelectDate: (dateKey: string) => void;
 }
 
-const STATUS_STYLES: Record<DayCompletionEntry['status'], string> = {
-  complete: 'bg-cyan-500/40 border-cyan-400/50',
-  incomplete: 'bg-red-500/20 border-red-500/30',
-  frozen: 'bg-amber-500/20 border-amber-400/40',
+const STATUS_CLASS: Record<DayCompletionEntry['status'] | 'empty' | 'journal', string> = {
+  complete: 'bg-cyan-500/55 border-cyan-400/40',
+  incomplete: 'bg-red-500/35 border-red-500/30',
+  frozen: 'bg-amber-500/35 border-amber-400/35',
+  empty: 'bg-slate-800/60 border-slate-700/40',
+  journal: 'ring-1 ring-emerald-400/70',
 };
 
-function getLastNDays(n: number): string[] {
-  const days: string[] = [];
-  const today = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  return days;
+function startOfWeekMonday(d: Date) {
+  const x = new Date(d);
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function toKey(d: Date) {
+  return d.toISOString().slice(0, 10);
 }
 
 export default function StreakCalendar({
@@ -35,76 +39,108 @@ export default function StreakCalendar({
   selectedDate,
   onSelectDate,
 }: StreakCalendarProps) {
-  const days = getLastNDays(28);
-  const logMap = new Map(dayCompletionLog.map((e) => [e.date, e.status]));
+  const [fullYear, setFullYear] = useState(false);
+  const weeksVisible = fullYear ? 52 : 10;
+  const logMap = useMemo(
+    () => new Map(dayCompletionLog.map((e) => [e.date, e.status])),
+    [dayCompletionLog]
+  );
   const todayKey = getTodayKey();
 
+  const weeks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = startOfWeekMonday(today);
+    end.setDate(end.getDate() + 6);
+    const start = startOfWeekMonday(today);
+    start.setDate(start.getDate() - (weeksVisible - 1) * 7);
+
+    const cols: string[][] = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const col: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        col.push(toKey(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      cols.push(col);
+    }
+    return cols;
+  }, [weeksVisible]);
+
   return (
-    <div className="glass-panel">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div>
-          <p className="panel-label">Streak Calendar</p>
-          <p className="text-[10px] text-slate-500 mt-1">
-            Click a day to view or edit its journal
-          </p>
+    <div className="glass-panel !py-2.5 !px-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <p className="panel-label">Streak Heatmap</p>
+          <span className="text-meta hidden sm:inline">Tap a day to open its journal</span>
         </div>
-        <div className="flex gap-4 text-xs">
+        <div className="flex items-center gap-3 text-[11px] font-mono-data">
           <span className="text-cyan-300">
-            Current: <strong className="tabular-nums">{currentStreak}</strong>
+            Current <strong>{currentStreak}</strong>
           </span>
-          <span className="text-amber-400/80">
-            Best: <strong className="tabular-nums">{bestStreak}</strong>
+          <span className="text-amber-300/80">
+            Best <strong>{bestStreak}</strong>
           </span>
+          <button
+            type="button"
+            onClick={() => setFullYear((v) => !v)}
+            className="text-[10px] uppercase tracking-wider text-slate-400 hover:text-neon-teal border border-slate-700/50 rounded px-2 py-1 min-h-[32px]"
+          >
+            {fullYear ? 'Last 10 wks' : 'Full year'}
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-        {days.map((date) => {
-          const status = logMap.get(date);
-          const isToday = date === todayKey;
-          const isSelected = date === selectedDate;
-          const dayNum = new Date(date + 'T12:00:00').getDate();
-          const hasJournal = hasJournalForDate(date);
+      <div className="overflow-x-auto custom-scrollbar pb-1">
+        <div className="inline-flex gap-[3px] min-w-0">
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-[3px]">
+              {week.map((date) => {
+                const status = logMap.get(date);
+                const hasJournal = hasJournalForDate(date);
+                const isFuture = date > todayKey;
+                const isSelected = date === selectedDate;
+                const isToday = date === todayKey;
+                const cls = isFuture
+                  ? 'bg-transparent border-transparent'
+                  : STATUS_CLASS[status ?? 'empty'];
 
-          return (
-            <button
-              key={date}
-              type="button"
-              onClick={() => onSelectDate(date)}
-              title={`${formatJournalDateLabel(date)}${status ? ` — ${status}` : ''}${hasJournal ? ' — journal saved' : ''}`}
-              className={`aspect-square rounded-md border flex flex-col items-center justify-center text-[10px] sm:text-xs tabular-nums transition-all hover:brightness-125 ${
-                status
-                  ? STATUS_STYLES[status]
-                  : 'bg-slate-900/50 border-slate-700/40 text-slate-600'
-              } ${isToday ? 'ring-1 ring-cyan-400/60' : ''} ${
-                isSelected ? 'ring-2 ring-cyan-400 scale-105 z-10' : ''
-              }`}
-            >
-              <span>{dayNum}</span>
-              {hasJournal && (
-                <span className="w-1 h-1 rounded-full bg-emerald-400 mt-0.5" aria-hidden />
-              )}
-            </button>
-          );
-        })}
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    disabled={isFuture}
+                    onClick={() => onSelectDate(date)}
+                    title={`${formatJournalDateLabel(date)}${status ? ` — ${status}` : ''}${
+                      hasJournal ? ' — journal saved' : ''
+                    }`}
+                    className={`heatmap-cell ${cls} ${hasJournal && !isFuture ? STATUS_CLASS.journal : ''} ${
+                      isToday ? 'outline outline-1 outline-cyan-300/80' : ''
+                    } ${isSelected ? 'outline outline-2 outline-offset-1 outline-cyan-400' : ''} ${
+                      isFuture ? 'cursor-default' : 'hover:brightness-125'
+                    }`}
+                    aria-label={formatJournalDateLabel(date)}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 mt-3 text-[10px] text-slate-500 uppercase tracking-wider">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-cyan-500/40 border border-cyan-400/50" />
-          Complete
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1">
+          <span className={`heatmap-cell ${STATUS_CLASS.complete}`} /> Complete
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-red-500/20 border border-red-500/30" />
-          Missed
+        <span className="flex items-center gap-1">
+          <span className={`heatmap-cell ${STATUS_CLASS.incomplete}`} /> Missed
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-amber-500/20 border border-amber-400/40" />
-          Frozen
+        <span className="flex items-center gap-1">
+          <span className={`heatmap-cell ${STATUS_CLASS.frozen}`} /> Frozen
         </span>
-        <span className="flex items-center gap-1.5 normal-case">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Journal saved
+        <span className="flex items-center gap-1">
+          <span className={`heatmap-cell ${STATUS_CLASS.empty} ${STATUS_CLASS.journal}`} /> Journal
         </span>
       </div>
     </div>

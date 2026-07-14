@@ -9,6 +9,9 @@ export interface UserStats {
 export interface StatHistoryEntry {
   date: string;
   stats: UserStats;
+  totalPower?: number | null;
+  level?: number | null;
+  currentExp?: number | null;
 }
 
 export interface GearItem {
@@ -127,7 +130,13 @@ export interface Exercise {
 
 export interface Workout {
   _id: string;
-  dayType: 'Upper' | 'Lower' | 'Rest';
+  dayType:
+    | 'UpperA'
+    | 'UpperB'
+    | 'LowerA'
+    | 'LowerB'
+    | 'ActiveRecovery'
+    | 'Rest';
   exercises: Exercise[];
 }
 
@@ -174,6 +183,8 @@ export interface GrindQuest {
   targetCount: number;
   currentProgress: number;
   progressPercent: number;
+  trackingSource?: 'manual' | 'workout' | 'study_hours';
+  autoTracked?: boolean;
 }
 
 export interface GrindResponse {

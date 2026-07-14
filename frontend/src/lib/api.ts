@@ -35,7 +35,7 @@ export const api = {
   getUser: () => fetchAPI<User>('/api/user'),
 
   updateTitle: (title: string) =>
-    fetchAPI<{ equippedTitle: string }>('/api/user/title', {
+    fetchAPI<{ equippedTitle: string; availableTitles?: string[] }>('/api/user/title', {
       method: 'PATCH',
       body: JSON.stringify({ title }),
     }),

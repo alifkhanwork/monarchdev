@@ -8,50 +8,60 @@ interface GrindQuestCardProps {
   updating?: boolean;
 }
 
+function formatProgress(value: number, trackingSource?: GrindQuest['trackingSource']) {
+  if (trackingSource === 'study_hours') {
+    const rounded = Math.round(value * 100) / 100;
+    return String(rounded);
+  }
+  return String(Math.round(value));
+}
+
 export default function GrindQuestCard({ quest, onIncrement, updating }: GrindQuestCardProps) {
   const delta = quest.targetCount > 20 ? Math.max(1, Math.floor(quest.targetCount / 20)) : 1;
+  const autoTracked = Boolean(quest.autoTracked);
 
   return (
-    <article className="milestone-quest-card">
-      <div className="flex items-start justify-between gap-3 mb-2">
+    <article className="milestone-quest-card h-full flex flex-col !p-2.5">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
-          <span className="text-[9px] uppercase tracking-wider text-cyan-400/60">
-            {quest.category}
-          </span>
-          <h3 className="text-sm font-semibold text-white mt-1 leading-snug">{quest.title}</h3>
+          <span className="text-[9px] uppercase tracking-wider text-cyan-400/60">{quest.category}</span>
+          <h3 className="text-[13px] font-semibold text-white leading-snug truncate">{quest.title}</h3>
         </div>
-        <span className="text-xs text-cyan-300 font-bold tabular-nums shrink-0">
-          {quest.currentProgress}/{quest.targetCount}
+        <span className="text-[11px] text-neon-teal font-bold font-mono-data shrink-0">
+          {formatProgress(quest.currentProgress, quest.trackingSource)}/{quest.targetCount}
         </span>
       </div>
 
-      <div className="space-y-2">
-        <div className="h-2 rounded-full bg-slate-900/80 border border-cyan-500/15 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-700 to-cyan-400 transition-all duration-500"
-            style={{ width: `${quest.progressPercent}%` }}
-          />
+      <div className="mt-auto space-y-1.5">
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: `${quest.progressPercent}%` }} />
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-slate-500 tabular-nums">{quest.progressPercent}%</span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={updating || quest.currentProgress <= 0}
-              onClick={() => onIncrement(quest._id, -delta)}
-              className="grind-btn grind-btn-minus"
-            >
-              -{delta}
-            </button>
-            <button
-              type="button"
-              disabled={updating || quest.currentProgress >= quest.targetCount}
-              onClick={() => onIncrement(quest._id, delta)}
-              className="grind-btn grind-btn-plus"
-            >
-              +{delta}
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-slate-500 font-mono-data">{quest.progressPercent}%</span>
+          {autoTracked ? (
+            <span className="text-[9px] uppercase tracking-wider text-cyan-400/70">
+              auto-tracked from Daily Grind
+            </span>
+          ) : (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                disabled={updating || quest.currentProgress <= 0}
+                onClick={() => onIncrement(quest._id, -delta)}
+                className="grind-btn grind-btn-minus"
+              >
+                −{delta}
+              </button>
+              <button
+                type="button"
+                disabled={updating || quest.currentProgress >= quest.targetCount}
+                onClick={() => onIncrement(quest._id, delta)}
+                className="grind-btn grind-btn-plus"
+              >
+                +{delta}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </article>

@@ -7,6 +7,12 @@ const weeklyGrindSchema = new mongoose.Schema(
     targetCount: { type: Number, required: true },
     currentProgress: { type: Number, default: 0 },
     periodKey: { type: String, required: true },
+    /** manual = +/- stepper; workout / study_hours = derived from DailyMetricLog */
+    trackingSource: {
+      type: String,
+      enum: ['manual', 'workout', 'study_hours'],
+      default: 'manual',
+    },
   },
   { timestamps: true }
 );

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { WORKOUT_DAY_TYPES } = require('../utils/workoutRoutines');
 
 const exerciseSchema = new mongoose.Schema(
   {
@@ -15,7 +16,7 @@ const workoutSchema = new mongoose.Schema(
   {
     dayType: {
       type: String,
-      enum: ['Upper', 'Lower', 'Rest'],
+      enum: WORKOUT_DAY_TYPES,
       required: true,
       unique: true,
     },

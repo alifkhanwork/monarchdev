@@ -1,8 +1,11 @@
-export type TabId = 'daily' | 'weekly' | 'monthly' | 'profile' | 'milestones';
+export type TabId = 'daily' | 'grind' | 'profile' | 'milestones';
+
+export type GrindPeriod = 'weekly' | 'monthly';
 
 export interface TabConfig {
   id: TabId;
   label: string;
+  shortLabel: string;
   icon: string;
   description: string;
 }
@@ -11,31 +14,42 @@ export const TABS: TabConfig[] = [
   {
     id: 'daily',
     label: 'The Daily Grind',
+    shortLabel: 'Daily',
     icon: '⚔',
     description: "Execute today's quests",
   },
   {
-    id: 'weekly',
-    label: 'Weekly Grind',
+    id: 'grind',
+    label: 'The Grind',
+    shortLabel: 'Grind',
     icon: '🛡',
-    description: 'Recurring weekly goals',
-  },
-  {
-    id: 'monthly',
-    label: 'Monthly Grind',
-    icon: '◷',
-    description: 'Recurring monthly goals',
+    description: 'Recurring weekly & monthly goals',
   },
   {
     id: 'profile',
     label: 'Player Profile',
+    shortLabel: 'Profile',
     icon: '◈',
     description: 'Stats & gear loadout',
   },
   {
     id: 'milestones',
     label: 'The Quest Board',
+    shortLabel: 'Quests',
     icon: '★',
     description: 'Long-term milestones',
   },
 ];
+
+const GRIND_PERIOD_KEY = 'the-system-grind-period';
+
+export function loadGrindPeriod(): GrindPeriod {
+  if (typeof window === 'undefined') return 'weekly';
+  const raw = localStorage.getItem(GRIND_PERIOD_KEY);
+  return raw === 'monthly' ? 'monthly' : 'weekly';
+}
+
+export function saveGrindPeriod(period: GrindPeriod): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(GRIND_PERIOD_KEY, period);
+}

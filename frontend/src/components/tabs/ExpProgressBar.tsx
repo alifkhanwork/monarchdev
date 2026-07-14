@@ -9,7 +9,10 @@ interface ExpProgressBarProps {
   expToNextLevel: number;
   currentStreak?: number;
   bestStreak?: number;
+  questDone?: number;
+  questTotal?: number;
   freezeHistory?: FreezeHistoryEntry[];
+  sticky?: boolean;
 }
 
 export default function ExpProgressBar({
@@ -18,54 +21,65 @@ export default function ExpProgressBar({
   expToNextLevel,
   currentStreak = 0,
   bestStreak = 0,
+  questDone,
+  questTotal,
   freezeHistory = [],
+  sticky = false,
 }: ExpProgressBarProps) {
   const percent = Math.min((currentExp / expToNextLevel) * 100, 100);
 
   return (
-    <div className="glass-panel p-4 sm:p-5">
-      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-        <div className="shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="text-center min-w-[56px]">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-cyan-400/60">Level</p>
-              <p className="text-3xl font-bold text-glow-cyan tabular-nums leading-none">{level}</p>
-            </div>
-            <div className="h-10 w-px bg-cyan-500/20" />
-            <div className="text-center min-w-[56px]">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-cyan-400/60">Streak</p>
-              <p className="text-2xl font-bold text-glow-cyan tabular-nums leading-none">
-                {currentStreak}
-              </p>
-            </div>
-            <div className="text-center min-w-[56px]">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-cyan-400/60">Best</p>
-              <p className="text-2xl font-bold text-cyan-300/80 tabular-nums leading-none">
-                {bestStreak}
-              </p>
-            </div>
-          </div>
-          <FreezeHistoryPanel history={freezeHistory} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between text-xs mb-2">
-            <span className="text-slate-400 uppercase tracking-wider">Experience</span>
-            <span className="text-cyan-300 font-semibold tabular-nums">
-              {currentExp.toLocaleString()} / {expToNextLevel.toLocaleString()} EXP
+    <div className={sticky ? 'sticky-hud' : 'glass-panel !py-2 !px-3'}>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-baseline gap-1 px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10">
+            <span className="text-[9px] uppercase tracking-wider text-cyan-400/70 hidden xs:inline">Lv</span>
+            <span className="text-lg sm:text-xl font-bold text-glow-cyan font-mono-data leading-none">
+              {level}
             </span>
           </div>
-          <div className="h-3 rounded-full bg-slate-900/80 border border-cyan-500/20 overflow-hidden">
-            <div
-              className="exp-bar-fill h-full rounded-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-teal-300 shadow-[0_0_12px_rgba(34,211,238,0.5)]"
-              style={{ width: `${percent}%` }}
-            />
+          <div className="hidden sm:flex items-center gap-2 text-[11px]">
+            <span className="text-slate-500">
+              Streak <strong className="text-neon-teal font-mono-data">{currentStreak}</strong>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-500">
+              Best <strong className="text-amber-300/90 font-mono-data">{bestStreak}</strong>
+            </span>
           </div>
-          <p className="text-[10px] text-slate-500 mt-1.5 text-right tabular-nums">
-            {percent.toFixed(1)}% to Level {level + 1}
-          </p>
+          <div className="flex sm:hidden items-center gap-1.5 text-[10px] font-mono-data text-slate-400">
+            <span className="text-neon-teal">{currentStreak}</span>
+            <span>/</span>
+            <span className="text-amber-300/80">{bestStreak}</span>
+          </div>
         </div>
+
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <div className="flex-1 min-w-0 relative">
+            <div className="progress-track !h-2">
+              <div
+                className="exp-bar-fill h-full rounded-full bg-gradient-to-r from-cyan-600 via-[#00E5FF] to-teal-300 shadow-[0_0_10px_rgba(0,229,255,0.45)]"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-[10px] sm:text-[11px] text-neon-teal font-mono-data shrink-0 whitespace-nowrap">
+            {currentExp}/{expToNextLevel}
+            <span className="text-slate-500 ml-1 hidden sm:inline">{percent.toFixed(0)}%</span>
+          </span>
+        </div>
+
+        {questDone != null && questTotal != null && (
+          <span className="shrink-0 text-[11px] font-mono-data text-amber-300/90 px-1.5 py-0.5 rounded border border-amber-500/25 bg-amber-500/10">
+            {questDone}/{questTotal}
+          </span>
+        )}
       </div>
+      {freezeHistory.length > 0 && (
+        <div className="mt-1 hidden sm:block">
+          <FreezeHistoryPanel history={freezeHistory} />
+        </div>
+      )}
     </div>
   );
 }

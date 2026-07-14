@@ -29,7 +29,7 @@ export default function StatRadarChart({ stats, effectiveStats }: StatRadarChart
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="relative w-full max-w-[320px] mx-auto aspect-square">
+    <div className="relative w-full max-w-[240px] mx-auto aspect-square">
       {/* Concentric rings */}
       <div className="absolute inset-[8%] rounded-full border border-cyan-500/10" />
       <div className="absolute inset-[18%] rounded-full border border-cyan-500/15" />

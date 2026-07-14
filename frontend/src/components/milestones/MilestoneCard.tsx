@@ -6,6 +6,7 @@ import type { Milestone } from '@/types';
 interface MilestoneCardProps {
   milestone: Milestone;
   onToggleSubtask: (milestoneId: string, subtaskId: string) => void;
+  compact?: boolean;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -22,8 +23,12 @@ function formatTargetDate(date: string | null) {
   });
 }
 
-export default function MilestoneCard({ milestone, onToggleSubtask }: MilestoneCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export default function MilestoneCard({
+  milestone,
+  onToggleSubtask,
+  compact = true,
+}: MilestoneCardProps) {
+  const [expanded, setExpanded] = useState(!compact);
   const progress = milestone.progressPercent;
   const isSSR = milestone.category === 'SSR Gear Quest' || milestone.rewardItem?.rarity === 'SSR';
   const target = formatTargetDate(milestone.targetDate);
@@ -41,97 +46,83 @@ export default function MilestoneCard({ milestone, onToggleSubtask }: MilestoneC
         isSSR ? 'milestone-quest-ssr' : ''
       }`}
     >
-      <div className="flex items-start gap-2">
-        {hasSubtasks && (
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="text-cyan-400/70 hover:text-cyan-300 mt-0.5 shrink-0 w-5"
-            aria-expanded={expanded}
-          >
-            {expanded ? '▼' : '▶'}
-          </button>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="min-w-0">
-              <span className="text-[9px] uppercase tracking-wider text-cyan-400/60">
-                {CATEGORY_LABELS[milestone.category] ?? milestone.category}
-              </span>
+      <button
+        type="button"
+        className="w-full text-left"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <h3
-                className={`text-sm sm:text-base font-semibold mt-1 leading-snug ${
+                className={`text-[13px] font-semibold truncate ${
                   milestone.isCompleted ? 'text-slate-500 line-through' : 'text-white'
                 }`}
               >
                 {milestone.title}
               </h3>
+              {target && <span className="text-meta shrink-0">{target}</span>}
+              {rewardParts.length > 0 && (
+                <span className="text-[11px] text-amber-400/90 font-mono-data shrink-0">
+                  {rewardParts.join(' · ')}
+                </span>
+              )}
+              {milestone.rewardItem && (
+                <span
+                  className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                    milestone.rewardItem.rarity === 'SSR'
+                      ? 'border-amber-500/50 bg-amber-900/30 text-amber-300'
+                      : 'border-purple-500/50 bg-purple-900/30 text-purple-300'
+                  }`}
+                >
+                  {milestone.rewardItem.rarity}
+                </span>
+              )}
             </div>
-            {milestone.rewardItem ? (
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="progress-track flex-1 !h-1">
+                <div
+                  className={`progress-fill ${
+                    milestone.isCompleted ? '!bg-gradient-to-r !from-emerald-600 !to-emerald-400' : ''
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
               <span
-                className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  milestone.rewardItem.rarity === 'SSR'
-                    ? 'border-amber-500/50 bg-amber-900/30 text-amber-300'
-                    : 'border-purple-500/50 bg-purple-900/30 text-purple-300'
-                }`}
-              >
-                {milestone.rewardItem.rarity}
-              </span>
-            ) : null}
-          </div>
-
-          {target && (
-            <p className="text-[10px] text-slate-500 mb-2">
-              Target: <span className="text-slate-400">{target}</span>
-            </p>
-          )}
-
-          {rewardParts.length > 0 && (
-            <p className="text-[10px] text-slate-500 mb-2">
-              Reward:{' '}
-              <span className="text-amber-400/90 font-semibold">{rewardParts.join(', ')}</span>
-            </p>
-          )}
-
-          {milestone.rewardItem && (
-            <p className="text-[10px] text-slate-500 mb-2">
-              Item: <span className="text-slate-400">{milestone.rewardItem.name}</span>
-            </p>
-          )}
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px]">
-              <span className="text-slate-500 uppercase tracking-wider">Progress</span>
-              <span
-                className={`font-semibold ${
+                className={`text-[10px] font-mono-data shrink-0 ${
                   milestone.isCompleted ? 'text-emerald-400' : 'text-cyan-400'
                 }`}
               >
-                {milestone.isCompleted ? 'Complete' : `${progress}%`}
+                {milestone.isCompleted ? 'Done' : `${progress}%`}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-slate-900/80 border border-cyan-500/15 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${
-                  milestone.isCompleted
-                    ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
-                    : 'bg-gradient-to-r from-cyan-700 to-cyan-400'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
           </div>
+          {(hasSubtasks || !compact) && (
+            <span className="text-cyan-400/60 text-[10px] shrink-0">{expanded ? '▼' : '▶'}</span>
+          )}
+        </div>
+      </button>
 
-          {expanded && hasSubtasks && (
-            <ul className="mt-3 space-y-1.5 border-t border-cyan-500/10 pt-3">
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-cyan-500/10 space-y-1.5">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+            {CATEGORY_LABELS[milestone.category] ?? milestone.category}
+            {milestone.rewardItem ? ` · ${milestone.rewardItem.name}` : ''}
+          </p>
+          {hasSubtasks && (
+            <ul className="space-y-1">
               {milestone.subTasks.map((st) => (
                 <li key={st._id}>
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="checkbox"
-                      checked={st.isCompleted}
-                      onChange={() => onToggleSubtask(milestone._id, st._id)}
-                      className="quest-native-checkbox"
-                    />
+                  <label className="flex items-center gap-2 cursor-pointer text-[13px] min-h-[36px]">
+                    <span className="quest-hit">
+                      <input
+                        type="checkbox"
+                        checked={st.isCompleted}
+                        onChange={() => onToggleSubtask(milestone._id, st._id)}
+                        className="quest-native-checkbox"
+                      />
+                    </span>
                     <span className={st.isCompleted ? 'text-slate-500 line-through' : 'text-slate-300'}>
                       {st.title}
                     </span>
@@ -141,7 +132,7 @@ export default function MilestoneCard({ milestone, onToggleSubtask }: MilestoneC
             </ul>
           )}
         </div>
-      </div>
+      )}
     </article>
   );
 }

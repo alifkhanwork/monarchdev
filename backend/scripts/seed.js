@@ -9,6 +9,7 @@ const Milestone = require('../models/Milestone');
 const WeeklyGrind = require('../models/WeeklyGrind');
 const MonthlyGrind = require('../models/MonthlyGrind');
 const { getWeekKey, getMonthKey } = require('../utils/dateHelpers');
+const { WORKOUT_ROUTINES } = require('../utils/workoutRoutines');
 
 const seedData = async () => {
   await connectDB();
@@ -236,41 +237,10 @@ const seedData = async () => {
     console.log('Step/distance quest added');
   }
 
-  // --- Workouts ---
-  const workoutCount = await Workout.countDocuments();
-  if (workoutCount === 0) {
-    await Workout.insertMany([
-      {
-        dayType: 'Upper',
-        exercises: [
-          { name: 'Bench Press', sets: 4, repRange: '6-8' },
-          { name: 'Overhead Press', sets: 3, repRange: '8-10' },
-          { name: 'Barbell Rows', sets: 4, repRange: '8-10' },
-          { name: 'Pull-ups', sets: 3, repRange: 'AMRAP' },
-          { name: 'Tricep Dips', sets: 3, repRange: '10-12' },
-        ],
-      },
-      {
-        dayType: 'Lower',
-        exercises: [
-          { name: 'Squats', sets: 4, repRange: '6-8' },
-          { name: 'Romanian Deadlift', sets: 3, repRange: '8-10' },
-          { name: 'Leg Press', sets: 3, repRange: '10-12' },
-          { name: 'Calf Raises', sets: 4, repRange: '12-15' },
-          { name: 'Hanging Leg Raises', sets: 3, repRange: '12-15' },
-        ],
-      },
-      {
-        dayType: 'Rest',
-        exercises: [
-          { name: 'Light walk or mobility', sets: 1, repRange: '30 min' },
-          { name: '10,000 steps', sets: 1, repRange: 'Daily goal' },
-          { name: 'Stretching routine', sets: 1, repRange: '15 min' },
-        ],
-      },
-    ]);
-    console.log('Workouts seeded');
-  }
+  // --- Workouts (always sync to current routine) ---
+  await Workout.deleteMany({});
+  await Workout.insertMany(WORKOUT_ROUTINES);
+  console.log(`Workouts synced (${WORKOUT_ROUTINES.length} day types)`);
 
   // --- Milestones (S-Rank Gates) ---
   const LEVEL_20_MAIN_QUESTS = [
@@ -425,26 +395,123 @@ const seedData = async () => {
     await user.save();
   }
 
+  const weekKey = getWeekKey();
+  const monthKey = getMonthKey();
+
   const weeklyCount = await WeeklyGrind.countDocuments();
   if (weeklyCount === 0) {
-    const weekKey = getWeekKey();
     await WeeklyGrind.insertMany([
-      { title: 'Workout 5x this week', category: 'Fitness', targetCount: 5, currentProgress: 0, periodKey: weekKey },
-      { title: 'Read 3 chapters', category: 'Mental', targetCount: 3, currentProgress: 0, periodKey: weekKey },
-      { title: 'No junk food 6/7 days', category: 'Health', targetCount: 6, currentProgress: 0, periodKey: weekKey },
+      {
+        title: 'Workout 5x this week',
+        category: 'Fitness',
+        targetCount: 5,
+        currentProgress: 0,
+        periodKey: weekKey,
+        trackingSource: 'workout',
+      },
+      {
+        title: 'Study 5 hrs this week',
+        category: 'Mental',
+        targetCount: 5,
+        currentProgress: 0,
+        periodKey: weekKey,
+        trackingSource: 'study_hours',
+      },
+      {
+        title: 'Read 3 chapters',
+        category: 'Mental',
+        targetCount: 3,
+        currentProgress: 0,
+        periodKey: weekKey,
+        trackingSource: 'manual',
+      },
     ]);
     console.log('Weekly grind seeded');
+  } else {
+    const wWorkout = await WeeklyGrind.updateMany(
+      { title: /workout/i, category: 'Fitness' },
+      { $set: { trackingSource: 'workout' } }
+    );
+    if (wWorkout.modifiedCount > 0) {
+      console.log(`Marked ${wWorkout.modifiedCount} weekly workout grind(s) as auto-tracked`);
+    }
+    const studyWeekly = await WeeklyGrind.findOne({ title: 'Study 5 hrs this week' });
+    if (!studyWeekly) {
+      await WeeklyGrind.create({
+        title: 'Study 5 hrs this week',
+        category: 'Mental',
+        targetCount: 5,
+        currentProgress: 0,
+        periodKey: weekKey,
+        trackingSource: 'study_hours',
+      });
+      console.log('Added weekly Study 5 hrs quest');
+    } else if (studyWeekly.trackingSource !== 'study_hours') {
+      studyWeekly.trackingSource = 'study_hours';
+      await studyWeekly.save();
+    }
   }
 
   const monthlyCount = await MonthlyGrind.countDocuments();
   if (monthlyCount === 0) {
-    const monthKey = getMonthKey();
     await MonthlyGrind.insertMany([
-      { title: 'Save $500 this month', category: 'Finance', targetCount: 500, currentProgress: 0, periodKey: monthKey },
-      { title: '10 workout sessions', category: 'Fitness', targetCount: 10, currentProgress: 0, periodKey: monthKey },
-      { title: 'Finish 1 course module', category: 'Professional', targetCount: 1, currentProgress: 0, periodKey: monthKey },
+      {
+        title: 'Save $500 this month',
+        category: 'Finance',
+        targetCount: 500,
+        currentProgress: 0,
+        periodKey: monthKey,
+        trackingSource: 'manual',
+      },
+      {
+        title: '10 workout sessions',
+        category: 'Fitness',
+        targetCount: 10,
+        currentProgress: 0,
+        periodKey: monthKey,
+        trackingSource: 'workout',
+      },
+      {
+        title: 'Study 20 hrs this month',
+        category: 'Mental',
+        targetCount: 20,
+        currentProgress: 0,
+        periodKey: monthKey,
+        trackingSource: 'study_hours',
+      },
+      {
+        title: 'Finish 1 course module',
+        category: 'Professional',
+        targetCount: 1,
+        currentProgress: 0,
+        periodKey: monthKey,
+        trackingSource: 'manual',
+      },
     ]);
     console.log('Monthly grind seeded');
+  } else {
+    const mWorkout = await MonthlyGrind.updateMany(
+      { title: /workout/i, category: 'Fitness' },
+      { $set: { trackingSource: 'workout' } }
+    );
+    if (mWorkout.modifiedCount > 0) {
+      console.log(`Marked ${mWorkout.modifiedCount} monthly workout grind(s) as auto-tracked`);
+    }
+    const studyMonthly = await MonthlyGrind.findOne({ title: 'Study 20 hrs this month' });
+    if (!studyMonthly) {
+      await MonthlyGrind.create({
+        title: 'Study 20 hrs this month',
+        category: 'Mental',
+        targetCount: 20,
+        currentProgress: 0,
+        periodKey: monthKey,
+        trackingSource: 'study_hours',
+      });
+      console.log('Added monthly Study 20 hrs quest');
+    } else if (studyMonthly.trackingSource !== 'study_hours') {
+      studyMonthly.trackingSource = 'study_hours';
+      await studyMonthly.save();
+    }
   }
 
   console.log('Seed complete');

@@ -57,19 +57,19 @@ export default function LifetimeStatsSection({ lifetimeStats }: LifetimeStatsSec
   return (
     <div className="glass-panel">
       <p className="panel-label mb-1">Lifetime Stats</p>
-      <p className="text-[10px] text-slate-500 mb-5">
+      <p className="text-[10px] text-slate-500 mb-4">
         Cumulative totals from daily quest completions
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {STAT_CARDS.map((card) => {
           const value = lifetimeStats[card.key];
           return (
             <div key={card.key} className="lifetime-stat-card">
-              <span className="text-2xl mb-2" aria-hidden>
+              <span className="text-2xl mb-1.5 block" aria-hidden>
                 {card.icon}
               </span>
-              <p className={`text-2xl sm:text-3xl font-bold tabular-nums ${card.accent}`}>
+              <p className={`text-2xl sm:text-3xl font-bold font-mono-data ${card.accent}`}>
                 {value.toLocaleString()}
               </p>
               <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">

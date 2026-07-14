@@ -2,17 +2,19 @@ const getWorkoutDayType = (date = new Date()) => {
   const day = date.getDay();
   switch (day) {
     case 1:
-    case 4:
-      return 'Upper';
+      return 'UpperA'; // Monday — Back & Chest
     case 2:
-    case 5:
-      return 'Lower';
-    case 0:
+      return 'LowerA'; // Tuesday — Quads & Lower Abs
     case 3:
     case 6:
-      return 'Rest';
+      return 'ActiveRecovery'; // Wednesday & Saturday
+    case 4:
+      return 'UpperB'; // Thursday — Shoulders & Arms
+    case 5:
+      return 'LowerB'; // Friday — Hamstrings & Upper Abs
+    case 0:
     default:
-      return 'Rest';
+      return 'Rest'; // Sunday — Complete Rest / Mobility
   }
 };
 
@@ -64,6 +66,34 @@ const getNextMonthStart = (date = new Date()) => {
   return new Date(d.getFullYear(), d.getMonth() + 1, 1);
 };
 
+const localDateKey = (date = new Date()) => {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/** Monday–Sunday local date keys for the week containing `date`. */
+const getWeekDateKeys = (date = new Date()) => {
+  const d = startOfDay(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d);
+  monday.setDate(diff);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { startKey: localDateKey(monday), endKey: localDateKey(sunday) };
+};
+
+/** 1st–last day local date keys for the month containing `date`. */
+const getMonthDateKeys = (date = new Date()) => {
+  const d = startOfDay(date);
+  const start = new Date(d.getFullYear(), d.getMonth(), 1);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return { startKey: localDateKey(start), endKey: localDateKey(end) };
+};
+
 module.exports = {
   getWorkoutDayType,
   isSameDay,
@@ -72,4 +102,7 @@ module.exports = {
   getMonthKey,
   getNextMonday,
   getNextMonthStart,
+  localDateKey,
+  getWeekDateKeys,
+  getMonthDateKeys,
 };

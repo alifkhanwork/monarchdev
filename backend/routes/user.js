@@ -2,9 +2,34 @@ const express = require('express');
 const { getPlayer } = require('../utils/getPlayer');
 const { calculateTotalPower } = require('../utils/totalPower');
 const { getNextRank, RANK_LADDER } = require('../utils/ranks');
-const { formatLifetimeStatsResponse } = require('../utils/lifetimeStats');
+const { formatLifetimeStatsResponse, BADGE_DEFINITIONS } = require('../utils/lifetimeStats');
+const { appendStatHistory } = require('../utils/statHistory');
 
 const router = express.Router();
+
+const badgeIdToTitle = (badgeId) => {
+  for (const list of Object.values(BADGE_DEFINITIONS)) {
+    const found = list.find((b) => b.id === badgeId);
+    if (found) {
+      return found.name.startsWith('The ') ? found.name : `The ${found.name}`;
+    }
+  }
+  return null;
+};
+
+const collectAvailableTitles = (user, level, totalPower) => {
+  const titles = new Set(user.availableTitles || []);
+  for (const id of user.unlockedBadges || []) {
+    const t = badgeIdToTitle(id);
+    if (t) titles.add(t);
+  }
+  for (const rank of RANK_LADDER) {
+    if (level >= rank.level && totalPower >= rank.totalPower) {
+      titles.add(rank.name);
+    }
+  }
+  return [...titles];
+};
 
 const formatItem = (item) => {
   if (!item) return null;
@@ -26,6 +51,7 @@ const formatUserResponse = (user) => {
     user.equippedWeapon,
     user.equippedRelic
   );
+  const availableTitles = collectAvailableTitles(user, user.level, totalPower);
 
   return {
     username: user.username,
@@ -44,7 +70,8 @@ const formatUserResponse = (user) => {
     nextRank: getNextRank(user.level, totalPower),
     rankLadder: RANK_LADDER,
     equippedTitle: user.equippedTitle,
-    availableTitles: user.availableTitles,
+    availableTitles,
+    unlockedBadges: user.unlockedBadges || [],
     equippedWeapon: formatItem(user.equippedWeapon),
     equippedRelic: formatItem(user.equippedRelic),
     inventory: (user.inventory || []).map(formatItem).filter(Boolean),
@@ -57,6 +84,9 @@ const formatUserResponse = (user) => {
 router.get('/', async (req, res) => {
   try {
     const user = await getPlayer();
+    // Ensure today's power snapshot exists so the Performance Graph can accumulate
+    appendStatHistory(user, new Date(), user.equippedWeapon, user.equippedRelic);
+    await user.save();
     res.json(formatUserResponse(user));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch user', error: error.message });
@@ -91,14 +121,19 @@ router.patch('/title', async (req, res) => {
     }
 
     const user = await getPlayer();
-    if (!user.availableTitles.includes(title)) {
+    const { totalPower } = calculateTotalPower(user, user.equippedWeapon, user.equippedRelic);
+    const allowed = collectAvailableTitles(user, user.level, totalPower);
+    if (!allowed.includes(title)) {
       return res.status(400).json({ message: 'Title not available' });
     }
 
+    if (!user.availableTitles.includes(title)) {
+      user.availableTitles.push(title);
+    }
     user.equippedTitle = title;
     await user.save();
 
-    res.json({ equippedTitle: user.equippedTitle });
+    res.json({ equippedTitle: user.equippedTitle, availableTitles: collectAvailableTitles(user, user.level, totalPower) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update title', error: error.message });
   }

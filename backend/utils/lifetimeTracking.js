@@ -3,7 +3,11 @@ const {
   applyLifetimeDelta,
   checkAndUnlockBadges,
 } = require('./lifetimeStats');
-const { syncWorkoutGrindProgress } = require('./grindSync');
+const { getWorkoutGrindSnapshots } = require('./grindSync');
+const {
+  setWorkoutCompletedForDate,
+  setStudyHoursForDate,
+} = require('./dailyMetricLog');
 const {
   calculateExpReward,
   applyExpAndLevelUp,
@@ -15,7 +19,8 @@ const { appendStatHistory } = require('./statHistory');
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 
-const isWorkoutFullyComplete = (workout, dayDate) => {  if (!workout || workout.exercises.length === 0) return false;
+const isWorkoutFullyComplete = (workout, dayDate) => {
+  if (!workout || workout.exercises.length === 0) return false;
   return workout.exercises.every(
     (ex) => ex.completed && isSameDay(ex.lastCompletedDate, dayDate)
   );
@@ -32,7 +37,8 @@ const syncWorkoutLifetimeCount = async (user, workout) => {
   if (fullyComplete && !countedToday) {
     applyLifetimeDelta(user, 'workouts_completed', 1);
     user.lastWorkoutCountedDate = today;
-    grindUpdates = await syncWorkoutGrindProgress(1);
+    await setWorkoutCompletedForDate(today, true);
+    grindUpdates = await getWorkoutGrindSnapshots();
     const badges = checkAndUnlockBadges(user);
     return { badgesUnlocked: badges, grindUpdates };
   }
@@ -40,7 +46,14 @@ const syncWorkoutLifetimeCount = async (user, workout) => {
   if (!fullyComplete && countedToday) {
     applyLifetimeDelta(user, 'workouts_completed', -1);
     user.lastWorkoutCountedDate = null;
-    grindUpdates = await syncWorkoutGrindProgress(-1);
+    await setWorkoutCompletedForDate(today, false);
+    grindUpdates = await getWorkoutGrindSnapshots();
+    return { badgesUnlocked: [], grindUpdates };
+  }
+
+  // Already counted today and still complete — keep log true (idempotent, no double count)
+  if (fullyComplete && countedToday) {
+    await setWorkoutCompletedForDate(today, true);
   }
 
   return { badgesUnlocked: [], grindUpdates };
@@ -105,24 +118,30 @@ const processWorkoutSync = async (user, workout) => {
   };
 };
 
-const applyTaskLifetimeOnComplete = (user, task) => {
+const applyTaskLifetimeOnComplete = async (user, task) => {
   if (!task.lifetimeMetric || task.lifetimeMetric === 'none') return [];
   const amount = Math.max(0, task.logValue ?? task.defaultLogValue ?? 1);
   task.lastCountedValue = amount;
   applyLifetimeDelta(user, task.lifetimeMetric, amount);
+  if (task.lifetimeMetric === 'study_hours') {
+    await setStudyHoursForDate(new Date(), amount);
+  }
   return checkAndUnlockBadges(user);
 };
 
-const revertTaskLifetimeOnUncomplete = (user, task) => {
+const revertTaskLifetimeOnUncomplete = async (user, task) => {
   if (!task.lifetimeMetric || task.lifetimeMetric === 'none') return;
   const amount = task.lastCountedValue || task.logValue || task.defaultLogValue || 0;
   if (amount > 0) {
     applyLifetimeDelta(user, task.lifetimeMetric, -amount);
   }
   task.lastCountedValue = 0;
+  if (task.lifetimeMetric === 'study_hours') {
+    await setStudyHoursForDate(new Date(), 0);
+  }
 };
 
-const adjustTaskLifetimeLogValue = (user, task, newValue, oldValue) => {
+const adjustTaskLifetimeLogValue = async (user, task, newValue, oldValue) => {
   if (!task.lifetimeMetric || task.lifetimeMetric === 'none') return [];
   if (!task.isCompleted) return [];
 
@@ -134,6 +153,9 @@ const adjustTaskLifetimeLogValue = (user, task, newValue, oldValue) => {
 
   task.lastCountedValue = (task.lastCountedValue || oldValue) + delta;
   applyLifetimeDelta(user, task.lifetimeMetric, delta);
+  if (task.lifetimeMetric === 'study_hours') {
+    await setStudyHoursForDate(today, newValue);
+  }
   return checkAndUnlockBadges(user);
 };
 

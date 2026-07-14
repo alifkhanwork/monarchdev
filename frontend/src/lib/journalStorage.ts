@@ -1,9 +1,11 @@
+import { localDateKey } from './dateHelpers';
+
 const JOURNALS_KEY = 'the-system-journals';
 const LEGACY_JOURNAL_KEY = 'the-system-journal';
 const LEGACY_DATE_KEY = 'the-system-journal-date';
 
 export function getTodayKey(): string {
-  return new Date().toISOString().split('T')[0];
+  return localDateKey();
 }
 
 function readAllJournals(): Record<string, string> {

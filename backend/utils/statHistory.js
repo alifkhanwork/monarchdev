@@ -1,32 +1,57 @@
+const { calculateTotalPower } = require('./totalPower');
+
 const STAT_KEYS = ['strength', 'intelligence', 'perception', 'vitality', 'agility'];
 
-const appendStatHistory = (user, date = new Date()) => {
+/** Local calendar YYYY-MM-DD — avoids UTC day-shift bugs vs toISOString(). */
+const localDateKey = (date = new Date()) => {
+  const d = date instanceof Date ? date : new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/**
+ * Upsert a dated snapshot of stats + Total Power for trend charts.
+ * Call after meaningful progress (quest complete, rollover, user fetch).
+ */
+const appendStatHistory = (user, date = new Date(), weapon = null, relic = null) => {
   if (!user.statHistory) user.statHistory = [];
 
-  const dayKey = date.toISOString().split('T')[0];
-  const existing = user.statHistory.find((e) => e.date === dayKey);
+  const dayKey = localDateKey(date);
+  const equippedWeapon = weapon ?? user.equippedWeapon ?? null;
+  const equippedRelic = relic ?? user.equippedRelic ?? null;
+  const { totalPower } = calculateTotalPower(user, equippedWeapon, equippedRelic);
 
   const snapshot = {
     date: dayKey,
     stats: {
-      strength: user.stats.strength,
-      intelligence: user.stats.intelligence,
-      perception: user.stats.perception,
-      vitality: user.stats.vitality,
-      agility: user.stats.agility ?? 10,
+      strength: user.stats?.strength ?? 10,
+      intelligence: user.stats?.intelligence ?? 10,
+      perception: user.stats?.perception ?? 10,
+      vitality: user.stats?.vitality ?? 10,
+      agility: user.stats?.agility ?? 10,
     },
+    totalPower,
+    level: user.level || 1,
+    currentExp: user.currentExp || 0,
   };
 
+  const existing = user.statHistory.find((e) => e.date === dayKey);
   if (existing) {
     existing.stats = snapshot.stats;
+    existing.totalPower = snapshot.totalPower;
+    existing.level = snapshot.level;
+    existing.currentExp = snapshot.currentExp;
   } else {
     user.statHistory.push(snapshot);
   }
 
   user.statHistory.sort((a, b) => a.date.localeCompare(b.date));
-  if (user.statHistory.length > 14) {
-    user.statHistory = user.statHistory.slice(-14);
+  // Keep ~2 months for Performance Overview
+  if (user.statHistory.length > 60) {
+    user.statHistory = user.statHistory.slice(-60);
   }
 };
 
-module.exports = { appendStatHistory, STAT_KEYS };
+module.exports = { appendStatHistory, STAT_KEYS, localDateKey };

@@ -1,16 +1,22 @@
 const express = require('express');
 const WeeklyGrind = require('../models/WeeklyGrind');
 const { getWeekKey, getNextMonday } = require('../utils/dateHelpers');
+const {
+  TRACKING,
+  isAutoTracked,
+  ensureWeeklyPeriod,
+  hydrateWeeklyQuests,
+} = require('../utils/grindSync');
 
 const router = express.Router();
 
 const ensurePeriod = async () => {
-  const currentKey = getWeekKey();
   const quests = await WeeklyGrind.find();
   for (const quest of quests) {
-    if (quest.periodKey !== currentKey) {
-      quest.currentProgress = 0;
-      quest.periodKey = currentKey;
+    const prevKey = quest.periodKey;
+    const prevProgress = quest.currentProgress;
+    ensureWeeklyPeriod(quest);
+    if (quest.periodKey !== prevKey || quest.currentProgress !== prevProgress) {
       await quest.save();
     }
   }
@@ -25,19 +31,12 @@ router.get('/', async (req, res) => {
   try {
     await ensurePeriod();
     const quests = await WeeklyGrind.find().sort({ createdAt: 1 });
-    const resetsInMs = msUntilReset();
+    const hydrated = await hydrateWeeklyQuests(quests);
 
     res.json({
       periodKey: getWeekKey(),
-      resetsInMs,
-      quests: quests.map((q) => ({
-        _id: q._id,
-        title: q.title,
-        category: q.category,
-        targetCount: q.targetCount,
-        currentProgress: q.currentProgress,
-        progressPercent: Math.min(100, Math.round((q.currentProgress / q.targetCount) * 100)),
-      })),
+      resetsInMs: msUntilReset(),
+      quests: hydrated,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch weekly grind', error: error.message });
@@ -51,6 +50,13 @@ router.post('/:id/progress', async (req, res) => {
     const quest = await WeeklyGrind.findById(req.params.id);
     if (!quest) return res.status(404).json({ message: 'Quest not found' });
 
+    if (isAutoTracked(quest)) {
+      return res.status(400).json({
+        message: 'This quest is auto-tracked from Daily Grind',
+      });
+    }
+
+    ensureWeeklyPeriod(quest);
     quest.currentProgress = Math.max(
       0,
       Math.min(quest.targetCount, quest.currentProgress + delta)
@@ -61,6 +67,8 @@ router.post('/:id/progress', async (req, res) => {
       _id: quest._id,
       currentProgress: quest.currentProgress,
       progressPercent: Math.min(100, Math.round((quest.currentProgress / quest.targetCount) * 100)),
+      trackingSource: quest.trackingSource || TRACKING.MANUAL,
+      autoTracked: false,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update progress', error: error.message });

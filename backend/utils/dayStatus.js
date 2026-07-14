@@ -5,7 +5,10 @@ const DAY_STATUSES = {
   sick: { label: 'Sick Day', badge: '🩹 SICK DAY — Dailies Paused' },
   vacation: { label: 'Vacation', badge: '✈️ VACATION — Dailies Paused' },
   busy: { label: 'Busy (Work/School)', badge: '💼 BUSY (WORK/SCHOOL) — Dailies Paused' },
-  rest: { label: 'Rest Day', badge: '😴 REST DAY — Dailies Paused' },
+  rest: {
+    label: 'Rest Day',
+    badge: '😴 REST DAY — Optional rituals only · Streak protected · Excluded from miss penalties',
+  },
 };
 
 const FROZEN_STATUSES = ['sick', 'vacation', 'busy', 'rest'];

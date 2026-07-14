@@ -188,7 +188,7 @@ router.post('/complete/:id', async (req, res) => {
 
     incrementStat(user, task.statModifier, 1);
     const levelUps = applyExpAndLevelUp(user, expGained);
-    const badgesUnlocked = applyTaskLifetimeOnComplete(user, task);
+    const badgesUnlocked = await applyTaskLifetimeOnComplete(user, task);
     appendStatHistory(user, today);
     await user.save();
 
@@ -230,7 +230,7 @@ router.post('/uncomplete/:id', async (req, res) => {
 
     task.isCompleted = false;
     task.lastCompletedDate = null;
-    revertTaskLifetimeOnUncomplete(user, task);
+    await revertTaskLifetimeOnUncomplete(user, task);
     await task.save();
 
     decrementStat(user, task.statModifier, 1);
@@ -355,7 +355,7 @@ router.patch('/log-value/:id', async (req, res) => {
 
     const oldValue = task.logValue ?? task.defaultLogValue ?? 1;
     task.logValue = parsed;
-    const badgesUnlocked = adjustTaskLifetimeLogValue(user, task, parsed, oldValue);
+    const badgesUnlocked = await adjustTaskLifetimeLogValue(user, task, parsed, oldValue);
     await task.save();
     await user.save();
 

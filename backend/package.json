@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "sync-workouts": "node scripts/syncWorkouts.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

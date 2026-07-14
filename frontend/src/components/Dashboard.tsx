@@ -13,11 +13,13 @@ import type {
 import type { TabId } from '@/types/tabs';
 import SystemNav from '@/components/layout/SystemNav';
 import DailyGrindTab from '@/components/tabs/DailyGrindTab';
-import WeeklyGrindTab from '@/components/tabs/WeeklyGrindTab';
-import MonthlyGrindTab from '@/components/tabs/MonthlyGrindTab';
+import GrindHubTab from '@/components/tabs/GrindHubTab';
 import PlayerProfileTab from '@/components/tabs/PlayerProfileTab';
 import QuestBoardTab from '@/components/tabs/QuestBoardTab';
 import LevelUpToast from '@/components/LevelUpToast';
+import ActionToast from '@/components/ActionToast';
+import { DAY_CLEARED_FLAVOR, pickFlavor, QUEST_CLEARED_FLAVOR } from '@/lib/systemFlavor';
+import { toggleCustomQuestCompleted, type CustomQuest } from '@/lib/customQuestsStorage';
 import {
   getTodayKey,
   loadJournalForDate,
@@ -26,6 +28,14 @@ import {
 } from '@/lib/journalStorage';
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
+
+type UndoToastState = {
+  kind: 'server' | 'custom';
+  taskId: string;
+  title: string;
+  expReward: number;
+  flavor: string;
+};
 
 function loadTodayJournal(): string {
   migrateLegacyJournal();
@@ -45,6 +55,8 @@ export default function Dashboard() {
   const [levelUps, setLevelUps] = useState<number[]>([]);
   const [workoutSyncing, setWorkoutSyncing] = useState(false);
   const [journalSaving, setJournalSaving] = useState(false);
+  const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
+  const [customQuestTick, setCustomQuestTick] = useState(0);
 
   const journalTask = dailies?.tasks.find((t) =>
     t.taskName.toLowerCase().includes('journal')
@@ -85,6 +97,47 @@ export default function Dashboard() {
       setJournalEntry(loadJournalForDate(getTodayKey()));
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!undoToast) return;
+    const t = setTimeout(() => setUndoToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [undoToast]);
+
+  const showClearToast = (
+    taskId: string,
+    title: string,
+    expReward: number,
+    kind: 'server' | 'custom'
+  ) => {
+    setUndoToast({
+      kind,
+      taskId,
+      title,
+      expReward,
+      flavor: pickFlavor(QUEST_CLEARED_FLAVOR),
+    });
+  };
+
+  const handleUndoToast = async () => {
+    if (!undoToast) return;
+    const { kind, taskId } = undoToast;
+    setUndoToast(null);
+    try {
+      if (kind === 'custom') {
+        toggleCustomQuestCompleted(taskId, getTodayKey());
+        setCustomQuestTick((n) => n + 1);
+        return;
+      }
+      const result = await api.uncompleteTask(taskId);
+      applyUserUpdate(result.user);
+      updateTaskInDailies(taskId, false);
+      const freshUser = await api.getUser();
+      setUser(freshUser);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to undo');
+    }
+  };
 
   const handleJournalSave = async (text: string) => {
     const trimmed = text.trim();
@@ -161,14 +214,39 @@ export default function Dashboard() {
         const result = await api.uncompleteTask(taskId);
         applyUserUpdate(result.user);
         updateTaskInDailies(taskId, false);
+        setUndoToast(null);
       } else {
+        const task = dailies?.tasks.find((t) => t._id === taskId);
         const result = await api.completeTask(taskId);
         applyUserUpdate(result.user);
         updateTaskInDailies(taskId, true);
         setFlashingId(taskId);
         setTimeout(() => setFlashingId(null), 600);
+        if (task) {
+          showClearToast(taskId, task.taskName, task.expReward, 'server');
+        }
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try {
+            navigator.vibrate(12);
+          } catch {
+            // ignore
+          }
+        }
         if (result.levelUps.length > 0) {
           setLevelUps(result.levelUps);
+        }
+
+        // Day fully cleared flavor (server tasks all done)
+        const remaining =
+          dailies?.tasks.filter((t) => t._id !== taskId && !t.isCompleted).length ?? 1;
+        if (remaining === 0) {
+          setTimeout(() => {
+            setUndoToast((prev) =>
+              prev
+                ? { ...prev, flavor: pickFlavor(DAY_CLEARED_FLAVOR) }
+                : prev
+            );
+          }, 50);
         }
       }
       const freshUser = await api.getUser();
@@ -287,8 +365,16 @@ export default function Dashboard() {
 
   const handleTitleChange = async (title: string) => {
     try {
-      await api.updateTitle(title);
-      setUser((prev) => (prev ? { ...prev, equippedTitle: title } : prev));
+      const result = await api.updateTitle(title);
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              equippedTitle: result.equippedTitle,
+              availableTitles: result.availableTitles ?? prev.availableTitles,
+            }
+          : prev
+      );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update title');
     }
@@ -343,16 +429,28 @@ export default function Dashboard() {
     <>
       <LevelUpToast levels={levelUps} onDismiss={() => setLevelUps([])} />
 
+      {undoToast && (
+        <ActionToast
+          message={`${undoToast.flavor}  ·  +${undoToast.expReward} EXP`}
+          detail={`Quest cleared ✓ — ${undoToast.title}`}
+          actionLabel="Undo"
+          onAction={handleUndoToast}
+          onDismiss={() => setUndoToast(null)}
+        />
+      )}
+
       <SystemNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         username={user.username}
         level={user.level}
+        equippedTitle={user.equippedTitle}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-5 py-3 sm:py-4 pb-8">
         {activeTab === 'daily' && (
           <DailyGrindTab
+            key={`daily-${customQuestTick}`}
             user={user}
             dailies={dailies}
             journalEntry={journalEntry}
@@ -374,11 +472,13 @@ export default function Dashboard() {
             onLogValueChange={handleLogValueChange}
             completingId={completingId}
             flashingId={flashingId}
+            onCustomQuestCleared={(q: CustomQuest) => {
+              showClearToast(q.id, q.title, q.expReward, 'custom');
+            }}
           />
         )}
 
-        {activeTab === 'weekly' && <WeeklyGrindTab />}
-        {activeTab === 'monthly' && <MonthlyGrindTab />}
+        {activeTab === 'grind' && <GrindHubTab />}
 
         {activeTab === 'profile' && (
           <PlayerProfileTab user={user} onTitleChange={handleTitleChange} />

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { DailyTask, DayStatusInfo, GroupedTasks, Workout } from '@/types';
 import DayStatusSelect from './DayStatusSelect';
 
@@ -32,14 +31,17 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 const DAY_TYPE_LABELS: Record<string, string> = {
-  Upper: 'Upper Body',
-  Lower: 'Lower Body',
-  Rest: 'Rest / Recovery',
+  UpperA: 'Upper A',
+  UpperB: 'Upper B',
+  LowerA: 'Lower A',
+  LowerB: 'Lower B',
+  ActiveRecovery: 'Active Recovery',
+  Rest: 'Rest',
 };
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 
-function QuestLogInput({
+function QuestLogStepper({
   task,
   disabled,
   onCommit,
@@ -48,36 +50,43 @@ function QuestLogInput({
   disabled?: boolean;
   onCommit: (taskId: string, value: number) => void;
 }) {
-  const [draft, setDraft] = useState(String(task.logValue));
+  const step = task.logUnit === 'hr' ? 0.25 : 1;
 
-  useEffect(() => {
-    setDraft(String(task.logValue));
-  }, [task.logValue]);
-
-  const commit = () => {
-    const parsed = parseFloat(draft);
-    if (!Number.isNaN(parsed) && parsed >= 0 && parsed !== task.logValue) {
-      onCommit(task._id, parsed);
-    } else {
-      setDraft(String(task.logValue));
-    }
+  const bump = (dir: 1 | -1) => {
+    const next = Math.max(0, Math.round((task.logValue + dir * step) * 100) / 100);
+    if (next !== task.logValue) onCommit(task._id, next);
   };
 
   return (
-    <div className="flex items-center gap-1.5 ml-11 sm:ml-0 shrink-0 mt-1 sm:mt-0">
-      <input
-        type="number"
-        min={0}
-        step={task.logUnit === 'hr' ? 0.25 : 1}
-        value={draft}
+    <div className="stepper-chip" title={`Log ${task.logUnit}`}>
+      <button
+        type="button"
+        className="stepper-btn"
+        disabled={disabled || task.logValue <= 0}
+        onClick={(e) => {
+          e.stopPropagation();
+          bump(-1);
+        }}
+        aria-label={`Decrease ${task.logUnit}`}
+      >
+        −
+      </button>
+      <span className="stepper-val">
+        {task.logValue}
+        <span className="text-[9px] text-slate-500 ml-0.5 uppercase">{task.logUnit}</span>
+      </span>
+      <button
+        type="button"
+        className="stepper-btn"
         disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        className="quest-log-input"
-        aria-label={`Log ${task.logUnit} for ${task.taskName}`}
-      />
-      <span className="text-[10px] text-cyan-400/70 uppercase w-6">{task.logUnit}</span>
+        onClick={(e) => {
+          e.stopPropagation();
+          bump(1);
+        }}
+        aria-label={`Increase ${task.logUnit}`}
+      >
+        +
+      </button>
     </div>
   );
 }
@@ -136,115 +145,113 @@ export default function DailyTaskList({
   const workoutTotal = workout?.exercises.length ?? 0;
 
   return (
-    <div className={`glass-panel h-full flex flex-col overflow-hidden ${isFrozen ? 'opacity-90' : ''}`}>
-      <div className="panel-header flex-wrap gap-2">
-        <div>
+    <div className={`glass-panel flex flex-col overflow-hidden !p-3 ${isFrozen ? 'opacity-90' : ''}`}>
+      <div className="panel-header !pb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="panel-label">Daily Quests</span>
-          <p className="text-[10px] text-slate-500 mt-1">
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
+          <span className="text-meta truncate hidden sm:inline">
+            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <DayStatusSelect
-            currentStatus={dayStatus.status}
-            onStatusChange={onDayStatusChange}
-          />
-          <div className="text-right">
-            <span className="text-xs text-cyan-300 font-semibold tabular-nums block">
-              {completedCount}/{totalCount}
-            </span>
-            <span className="text-[10px] text-amber-400/90 font-semibold tabular-nums">
-              Today&apos;s EXP: {todayEarned} / {todayPossible}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <DayStatusSelect currentStatus={dayStatus.status} onStatusChange={onDayStatusChange} />
+          <span className="text-[11px] font-mono-data text-amber-300/90">
+            {todayEarned}/{todayPossible} EXP · {completedCount}/{totalCount}
+          </span>
         </div>
       </div>
 
       {dayStatus.badge && (
-        <div className="mt-3 px-3 py-2 rounded-lg border border-cyan-500/25 bg-cyan-500/5 text-center">
-          <p className="text-xs font-semibold text-cyan-300 tracking-wide">{dayStatus.badge}</p>
+        <div className="mt-2 px-2 py-1 rounded border border-cyan-500/25 bg-cyan-500/5 text-center">
+          <p className="text-[11px] font-semibold text-cyan-300 tracking-wide">{dayStatus.badge}</p>
         </div>
       )}
 
       <div
-        className={`flex-1 overflow-y-auto space-y-5 mt-4 pr-1 custom-scrollbar ${
+        className={`mt-2 space-y-2 custom-scrollbar ${
           isFrozen ? 'pointer-events-none select-none opacity-50' : ''
         }`}
       >
         {visibleGroupedTasks.map((group) => (
           <section key={group.category}>
-            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400/80 mb-2">
+            <h3 className="category-sticky">
               <span>{CATEGORY_ICONS[group.category] ?? '◇'}</span>
               {group.category}
             </h3>
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {group.tasks.map((task) => {
                 const hasLog = task.lifetimeMetric && task.lifetimeMetric !== 'none';
                 return (
-                <li key={task._id}>
-                  <div
-                    className={`quest-item w-full ${
-                      task.isCompleted ? 'quest-item-done' : ''
-                    } ${flashingId === task._id ? 'quest-item-flash' : ''} ${
-                      hasLog ? 'flex-wrap sm:flex-nowrap' : ''
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleTaskClick(task)}
-                      disabled={isFrozen || completingId === task._id}
-                      className="flex flex-1 min-w-0 items-center gap-3 text-left"
+                  <li key={task._id}>
+                    <div
+                      className={`quest-item w-full ${task.isCompleted ? 'quest-item-done' : ''} ${
+                        flashingId === task._id ? 'quest-item-flash' : ''
+                      }`}
                     >
-                      <span
-                        className={`quest-checkbox shrink-0 ${task.isCompleted ? 'quest-checkbox-done' : ''}`}
+                      <button
+                        type="button"
+                        onClick={() => handleTaskClick(task)}
+                        disabled={isFrozen || completingId === task._id}
+                        className="quest-hit -ml-1"
+                        aria-pressed={task.isCompleted}
+                        aria-label={task.taskName}
                       >
-                        {task.isCompleted && '✓'}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-sm ${
+                        <span
+                          className={`quest-checkbox ${task.isCompleted ? 'quest-checkbox-done' : ''}`}
+                        >
+                          {task.isCompleted && '✓'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTaskClick(task)}
+                        disabled={isFrozen || completingId === task._id}
+                        className="flex-1 min-w-0 text-left flex items-center gap-2"
+                      >
+                        <span
+                          className={`text-[13px] sm:text-sm truncate ${
                             task.isCompleted ? 'line-through text-slate-500' : 'text-white'
                           }`}
                         >
                           {task.taskName}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
+                        </span>
+                        <span className="quest-meta-pill hidden sm:inline">
                           +{task.expReward} EXP · {task.statModifier.toUpperCase()}
-                        </p>
-                      </div>
-                    </button>
-                    {hasLog && (
-                      <QuestLogInput
-                        task={task}
-                        disabled={isFrozen}
-                        onCommit={onLogValueChange}
-                      />
-                    )}
-                  </div>
-                </li>
-              );
+                        </span>
+                      </button>
+                      <span className="quest-meta-pill sm:hidden">+{task.expReward}</span>
+                      {hasLog && (
+                        <QuestLogStepper
+                          task={task}
+                          disabled={isFrozen}
+                          onCommit={onLogValueChange}
+                        />
+                      )}
+                    </div>
+                  </li>
+                );
               })}
             </ul>
           </section>
         ))}
 
         {workout && (
-          <section key="workout-of-the-day">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400/80">
-                <span>⚔</span>
-                Workout of the Day
-              </h3>
-              <span className="text-[10px] normal-case px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+          <section>
+            <div className="category-sticky flex-wrap gap-2">
+              <span className="flex items-center gap-1.5">
+                <span>⚔</span> Workout
+              </span>
+              <span className="normal-case px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-medium tracking-normal">
                 {DAY_TYPE_LABELS[dayType] || dayType}
               </span>
-              <span className="text-[10px] text-slate-500 tabular-nums">
+              <span className="text-slate-500 font-mono-data normal-case tracking-normal">
                 {workoutDoneCount}/{workoutTotal}
               </span>
+              {workoutQuest && (
+                <span className="text-amber-400/80 font-mono-data normal-case tracking-normal">
+                  +{workoutQuest.expReward} EXP
+                </span>
+              )}
               <div className="ml-auto">
                 {!workoutCompleted ? (
                   <button
@@ -268,25 +275,15 @@ export default function DailyTaskList({
               </div>
             </div>
 
-            {workoutQuest && (
-              <p className="text-[10px] text-slate-500 mb-2 px-1">
-                Reward:{' '}
-                <span className="text-amber-400/90 font-semibold">
-                  +{workoutQuest.expReward} EXP · {workoutQuest.statModifier.toUpperCase()}
-                </span>
-              </p>
-            )}
-
             {workoutCompleted && workoutQuest && (
-              <div className="mb-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-                <p className="text-xs font-semibold text-emerald-400">
-                  ✓ Workout complete — +{workoutQuest.expReward} EXP · +1{' '}
-                  {workoutQuest.statModifier.toUpperCase()}
+              <div className="mb-1.5 px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10">
+                <p className="text-[11px] font-semibold text-emerald-400">
+                  ✓ Workout complete — +{workoutQuest.expReward} EXP
                 </p>
               </div>
             )}
 
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {workout.exercises.map((exercise) => (
                 <li key={exercise._id}>
                   <button
@@ -297,25 +294,23 @@ export default function DailyTaskList({
                       exercise.completed ? 'quest-item-done' : ''
                     }`}
                   >
+                    <span className="quest-hit -ml-1">
+                      <span
+                        className={`quest-checkbox ${exercise.completed ? 'quest-checkbox-done' : ''}`}
+                      >
+                        {exercise.completed && '✓'}
+                      </span>
+                    </span>
                     <span
-                      className={`quest-checkbox ${
-                        exercise.completed ? 'quest-checkbox-done' : ''
+                      className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
+                        exercise.completed ? 'line-through text-slate-500' : 'text-white'
                       }`}
                     >
-                      {exercise.completed && '✓'}
+                      {exercise.name}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm ${
-                          exercise.completed ? 'line-through text-slate-500' : 'text-white'
-                        }`}
-                      >
-                        {exercise.name}
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        {exercise.sets} sets · {exercise.repRange}
-                      </p>
-                    </div>
+                    <span className="quest-meta-pill">
+                      {exercise.sets}×{exercise.repRange}
+                    </span>
                   </button>
                 </li>
               ))}

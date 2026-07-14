@@ -10,6 +10,9 @@ const statSnapshotSchema = new mongoose.Schema(
       vitality: Number,
       agility: Number,
     },
+    totalPower: { type: Number, default: null },
+    level: { type: Number, default: null },
+    currentExp: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -18,7 +21,7 @@ const userSchema = new mongoose.Schema(
   {
     username: {
       type: String,
-      default: 'Mohammad Ismail Hossain J. Khan',
+      default: 'Ace Avizandum',
     },
     currentAge: { type: Number, default: 20 },
     level: { type: Number, default: 1 },

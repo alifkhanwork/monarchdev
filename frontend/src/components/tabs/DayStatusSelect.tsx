@@ -5,10 +5,10 @@ import type { FreezeHistoryEntry } from '@/types';
 
 const STATUS_OPTIONS = [
   { value: 'normal', label: 'Normal' },
+  { value: 'rest', label: 'Rest Day' },
   { value: 'sick', label: 'Sick Day' },
   { value: 'vacation', label: 'Vacation' },
   { value: 'busy', label: 'Busy (Work/School)' },
-  { value: 'rest', label: 'Rest Day' },
 ] as const;
 
 interface DayStatusSelectProps {

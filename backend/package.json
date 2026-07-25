@@ -7,15 +7,25 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
-    "sync-workouts": "node scripts/syncWorkouts.js"
+    "sync-workouts": "node scripts/syncWorkouts.js",
+    "test": "jest --testPathPattern=utils"
   },
   "dependencies": {
+    "@sentry/node": "^9.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "mongoose": "^8.9.3"
+    "mongoose": "^8.9.3",
+    "resend": "^4.1.2"
   },
   "devDependencies": {
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
   }
 }

@@ -42,6 +42,24 @@ const normalizeStreaks = (user) => {
   };
 };
 
+/**
+ * Apply a day outcome to streak counters (pure aside from mutating user).
+ * @param {'complete'|'incomplete'|'frozen'} outcome
+ */
+const applyStreakForDayOutcome = (user, outcome) => {
+  if (outcome === 'frozen') {
+    // Frozen days preserve the current streak
+    return normalizeStreaks(user);
+  }
+  if (outcome === 'complete') {
+    user.currentStreak = (user.currentStreak || 0) + 1;
+    user.bestStreak = Math.max(user.bestStreak || 0, user.currentStreak);
+  } else {
+    user.currentStreak = 0;
+  }
+  return normalizeStreaks(user);
+};
+
 const incrementStat = (user, statModifier, amount = 1) => {
   if (user.stats[statModifier] !== undefined) {
     user.stats[statModifier] += amount;
@@ -80,4 +98,6 @@ module.exports = {
   decrementStat,
   expRequiredForLevel,
   normalizeStreaks,
+  applyStreakForDayOutcome,
+  STAT_MULTIPLIERS,
 };

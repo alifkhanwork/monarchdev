@@ -19,5 +19,11 @@
       "source": "/(.*)",
       "destination": { "service": "frontend" }
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/weekly-digest",
+      "schedule": "0 12 * * 0"
+    }
   ]
 }

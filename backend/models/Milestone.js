@@ -29,6 +29,15 @@ const milestoneSchema = new mongoose.Schema(
     ageGoal: { type: Number, default: null },
     subTasks: [subTaskSchema],
     rewardItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
+    /** Optional prerequisite milestone — null means unlocked (backward compatible). */
+    requiresMilestoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Milestone',
+      default: null,
+    },
+    /** Soft-archive when a category season is refreshed — history kept via MilestoneSeason. */
+    archived: { type: Boolean, default: false },
+    seasonNumber: { type: Number, default: 1 },
   },
   { timestamps: true }
 );

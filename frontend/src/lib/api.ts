@@ -50,6 +50,35 @@ export const api = {
       body: JSON.stringify({ currentAge }),
     }),
 
+  updateSettings: (settings: {
+    weightUnit?: 'kg' | 'lbs';
+    weekStartsOn?: 0 | 1;
+    weeklyDigestEnabled?: boolean;
+    email?: string;
+  }) =>
+    fetchAPI<{
+      email?: string;
+      settings: {
+        weightUnit: 'kg' | 'lbs';
+        weekStartsOn: 0 | 1;
+        weeklyDigestEnabled?: boolean;
+      };
+    }>('/api/user/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    }),
+
+  startQuestSeason: (groupKey: string, ageGoal?: number | null) =>
+    fetchAPI<{
+      message: string;
+      groupKey: string;
+      seasonNumber: number;
+      archivedCount: number;
+    }>('/api/milestones/seasons/start', {
+      method: 'POST',
+      body: JSON.stringify({ groupKey, ageGoal }),
+    }),
+
   dismissPenalty: () =>
     fetchAPI<{ message: string }>('/api/user/dismiss-penalty', { method: 'POST' }),
 

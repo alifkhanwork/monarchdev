@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'Ace Avizandum',
     },
+    /** Optional address for weekly digest emails (Resend). */
+    email: { type: String, default: '' },
     currentAge: { type: Number, default: 20 },
     level: { type: Number, default: 1 },
     currentExp: { type: Number, default: 0 },
@@ -103,6 +105,11 @@ const userSchema = new mongoose.Schema(
     spendableExp: { type: Number, default: 0 },
     ownedShopItems: { type: [String], default: [] },
     activeThemeAccent: { type: String, default: null },
+    settings: {
+      weightUnit: { type: String, enum: ['kg', 'lbs'], default: 'kg' },
+      weekStartsOn: { type: Number, enum: [0, 1], default: 1 }, // 0=Sunday, 1=Monday
+      weeklyDigestEnabled: { type: Boolean, default: true },
+    },
     cheatDayTokens: { type: Number, default: 0 },
     inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Item' }],
     equippedWeapon: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },

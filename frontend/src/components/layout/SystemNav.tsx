@@ -12,6 +12,8 @@ interface SystemNavProps {
   equippedTitle?: string;
 }
 
+const MAIN_TABS = TABS.filter((t) => t.id !== 'settings');
+
 export default function SystemNav({
   activeTab,
   onTabChange,
@@ -116,6 +118,20 @@ export default function SystemNav({
                   Lv. {level}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => onTabChange('settings')}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded border transition-colors ${
+                  activeTab === 'settings'
+                    ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-200'
+                    : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20'
+                }`}
+                aria-label="Open settings"
+                aria-current={activeTab === 'settings' ? 'page' : undefined}
+                title="Settings"
+              >
+                ⚙
+              </button>
               <span className="hidden sm:flex items-center gap-1 text-emerald-400/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[10px]">Online</span>
@@ -143,7 +159,7 @@ export default function SystemNav({
             className="hidden sm:flex gap-1 pb-2 overflow-x-auto custom-scrollbar"
             aria-label="Main navigation"
           >
-            {TABS.map((tab) => {
+            {MAIN_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
@@ -208,7 +224,7 @@ export default function SystemNav({
             </div>
 
             <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
-              {TABS.map((tab) => {
+              {[...MAIN_TABS, ...TABS.filter((t) => t.id === 'settings')].map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button

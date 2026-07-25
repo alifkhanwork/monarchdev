@@ -18,6 +18,7 @@ interface QuestBoardTabProps {
   currentAge: number;
   onAgeChange: (age: number) => void;
   onToggleSubtask: (milestoneId: string, subtaskId: string) => void;
+  onStartSeason?: (groupKey: string, ageGoal: number) => Promise<void>;
 }
 
 function isMainQuest(m: Milestone) {
@@ -54,12 +55,14 @@ export default function QuestBoardTab({
   currentAge,
   onAgeChange,
   onToggleSubtask,
+  onStartSeason,
 }: QuestBoardTabProps) {
   const [viewingAge, setViewingAge] = useState(currentAge);
   const [ageDraft, setAgeDraft] = useState(String(currentAge));
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [search, setSearch] = useState('');
   const [hideClearedCategories, setHideClearedCategories] = useState(true);
+  const [seasonBusy, setSeasonBusy] = useState<string | null>(null);
 
   useEffect(() => {
     setViewingAge(currentAge);
@@ -114,6 +117,36 @@ export default function QuestBoardTab({
       return !quests.every((q) => q.isCompleted);
     });
   }, [mainQuests, hideClearedCategories]);
+
+  /** Fully cleared groups (even if hidden) — eligible for a new season. */
+  const clearedGroups = useMemo(() => {
+    const map = new Map<string, Milestone[]>();
+    for (const m of mainQuests) {
+      const g = inferGroup(m.title);
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(m);
+    }
+    return [...map.entries()].filter(
+      ([, quests]) => quests.length > 0 && quests.every((q) => q.isCompleted)
+    );
+  }, [mainQuests]);
+
+  const handleStartSeason = async (groupKey: string) => {
+    if (!onStartSeason) return;
+    if (
+      !window.confirm(
+        `Archive “${groupKey}” season and clear it from the board? Past completions stay in season history — you’ll add new quests in Mongo/seed afterward.`
+      )
+    ) {
+      return;
+    }
+    setSeasonBusy(groupKey);
+    try {
+      await onStartSeason(groupKey, viewingAge);
+    } finally {
+      setSeasonBusy(null);
+    }
+  };
 
   const sectionIds = useMemo(() => {
     const ids = grouped.map(([g]) => g);
@@ -228,6 +261,39 @@ export default function QuestBoardTab({
           )}
         </div>
       </div>
+
+      {clearedGroups.length > 0 && onStartSeason && (
+        <div className="glass-panel space-y-2 !py-3">
+          <p className="panel-label">Season complete</p>
+          <p className="text-meta">
+            Archive a cleared category to open room for a new pack. History is kept — add new quests
+            via Mongo/seed afterward.
+          </p>
+          <ul className="space-y-2">
+            {clearedGroups.map(([group, quests]) => (
+              <li
+                key={group}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-cyan-500/20 bg-slate-950/40 px-3 py-2"
+              >
+                <span className="text-sm text-slate-200">
+                  {group}{' '}
+                  <span className="text-meta font-mono-data">
+                    {quests.length}/{quests.length} cleared
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="journal-action-btn"
+                  disabled={seasonBusy != null}
+                  onClick={() => handleStartSeason(group)}
+                >
+                  {seasonBusy === group ? 'Archiving…' : 'Start new season'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {grouped.map(([group, quests]) => {
         const done = quests.filter((q) => q.isCompleted).length;

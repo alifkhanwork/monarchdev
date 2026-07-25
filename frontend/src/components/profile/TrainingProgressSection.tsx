@@ -3,27 +3,41 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import type { ProgressAnalytics, WorkoutSession } from '@/types';
+import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
+import { PanelSkeleton } from '@/components/ui/Skeleton';
+import { SectionErrorFallback } from '@/components/ui/SectionErrorBoundary';
 
 interface TrainingProgressSectionProps {
   onGoTrain?: () => void;
+  weightUnit?: WeightUnit;
 }
 
-export default function TrainingProgressSection({ onGoTrain }: TrainingProgressSectionProps) {
+export default function TrainingProgressSection({
+  onGoTrain,
+  weightUnit = 'kg',
+}: TrainingProgressSectionProps) {
   const [analytics, setAnalytics] = useState<ProgressAnalytics | null>(null);
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
         const [a, h] = await Promise.all([api.getProgressAnalytics(), api.getWorkoutHistory(12)]);
         if (!cancelled) {
           setAnalytics(a);
           setHistory(h.sessions || []);
         }
-      } catch {
-        // non-fatal
+      } catch (e) {
+        if (!cancelled) {
+          setAnalytics(null);
+          setError(e instanceof Error ? e.message : 'Failed to load training data');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -31,17 +45,21 @@ export default function TrainingProgressSection({ onGoTrain }: TrainingProgressS
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   if (loading) {
-    return (
-      <div className="glass-panel flex justify-center py-8">
-        <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PanelSkeleton rows={5} />;
   }
 
-  if (!analytics) return null;
+  if (error || !analytics) {
+    return (
+      <SectionErrorFallback
+        label="Training History"
+        message={error || undefined}
+        onRetry={() => setReloadKey((n) => n + 1)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-2.5">
@@ -55,13 +73,13 @@ export default function TrainingProgressSection({ onGoTrain }: TrainingProgressS
           <div className="lifetime-stat-card">
             <p className="text-[10px] text-slate-400 uppercase">Weekly Volume</p>
             <p className="text-xl font-bold font-mono-data text-glow-gold">
-              {analytics.weeklyVolumeKg.toLocaleString()} kg
+              {formatWeight(analytics.weeklyVolumeKg, weightUnit)}
             </p>
           </div>
           <div className="lifetime-stat-card">
             <p className="text-[10px] text-slate-400 uppercase">Monthly Volume</p>
             <p className="text-xl font-bold font-mono-data text-neon-teal">
-              {analytics.monthlyVolumeKg.toLocaleString()} kg
+              {formatWeight(analytics.monthlyVolumeKg, weightUnit)}
             </p>
           </div>
           <div className="lifetime-stat-card">
@@ -119,7 +137,8 @@ export default function TrainingProgressSection({ onGoTrain }: TrainingProgressS
                     {s.dateKey} · {s.dayType}
                   </p>
                   <p className="text-[10px] font-mono-data text-amber-300/90">
-                    {s.totalVolumeKg?.toLocaleString() || 0} kg · ★{s.coachSummary?.rating ?? '—'}
+                    {formatWeight(s.totalVolumeKg || 0, weightUnit)} · ★
+                    {s.coachSummary?.rating ?? '—'}
                   </p>
                 </div>
                 <p className="text-[11px] text-slate-400 mb-1">{s.coachSummary?.headline}</p>
@@ -127,8 +146,10 @@ export default function TrainingProgressSection({ onGoTrain }: TrainingProgressS
                   {s.exercises.slice(0, 4).map((ex) => (
                     <li key={ex.exerciseName} className="text-[10px] font-mono-data text-slate-400">
                       {ex.exerciseName}
-                      {ex.weightKg != null ? ` @ ${ex.weightKg}kg` : ''} —{' '}
-                      {ex.sets.map((x) => x.reps).join('/')}
+                      {ex.weightKg != null
+                        ? ` @ ${formatWeight(ex.weightKg, weightUnit)}`
+                        : ''}{' '}
+                      — {ex.sets.map((x) => x.reps).join('/')}
                       {ex.verdict === 'progress' ? ' ↑' : ''}
                     </li>
                   ))}

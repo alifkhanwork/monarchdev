@@ -33,6 +33,7 @@ export default function CollapsibleCategoryHeader({
       }}
       className="category-sticky relative z-20 w-full justify-between pr-1 min-h-[40px] text-left cursor-pointer"
       aria-expanded={!collapsed}
+      aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title}`}
     >
       <span className="flex items-center gap-1.5 min-w-0 flex-wrap">
         {icon != null && <span aria-hidden>{icon}</span>}

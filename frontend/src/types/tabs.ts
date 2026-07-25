@@ -1,4 +1,4 @@
-export type TabId = 'daily' | 'grind' | 'profile' | 'milestones';
+export type TabId = 'daily' | 'grind' | 'profile' | 'milestones' | 'settings';
 
 export type GrindPeriod = 'weekly' | 'monthly';
 
@@ -38,6 +38,13 @@ export const TABS: TabConfig[] = [
     shortLabel: 'Quests',
     icon: '★',
     description: 'Long-term milestones',
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    shortLabel: 'Settings',
+    icon: '⚙',
+    description: 'Units, week start & cosmetics',
   },
 ];
 

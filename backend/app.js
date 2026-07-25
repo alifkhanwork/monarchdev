@@ -16,6 +16,10 @@ const weeklyRoutes = require('./routes/weekly');
 const monthlyRoutes = require('./routes/monthly');
 const progressRoutes = require('./routes/progress');
 const shopRoutes = require('./routes/shop');
+const cronRoutes = require('./routes/cron');
+const { initSentry, Sentry } = require('./utils/sentry');
+
+const sentryEnabled = initSentry();
 
 const app = express();
 
@@ -91,6 +95,7 @@ app.use('/api/weekly', weeklyRoutes);
 app.use('/api/monthly', monthlyRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/shop', shopRoutes);
+app.use('/api/cron', cronRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -102,6 +107,9 @@ app.use((req, res) => {
 
 app.use((err, req, res, _next) => {
   console.error('💥 System error:', err.stack);
+  if (sentryEnabled) {
+    Sentry.captureException(err);
+  }
   res.status(500).json({
     status: 'error',
     message: '💀 Critical System failure — internal server error',

@@ -19,8 +19,12 @@ import PlayerProfileTab from '@/components/tabs/PlayerProfileTab';
 import QuestBoardTab from '@/components/tabs/QuestBoardTab';
 import LevelUpToast from '@/components/LevelUpToast';
 import ActionToast from '@/components/ActionToast';
+import OnboardingModal from '@/components/OnboardingModal';
+import SettingsTab from '@/components/tabs/SettingsTab';
 import WorkoutPerformanceModal from '@/components/workout/WorkoutPerformanceModal';
 import CoachFeedbackModal from '@/components/workout/CoachFeedbackModal';
+import { DashboardBootSkeleton } from '@/components/ui/Skeleton';
+import SectionErrorBoundary from '@/components/ui/SectionErrorBoundary';
 import { DAY_CLEARED_FLAVOR, pickFlavor, QUEST_CLEARED_FLAVOR } from '@/lib/systemFlavor';
 import { toggleCustomQuestCompleted, type CustomQuest } from '@/lib/customQuestsStorage';
 import {
@@ -29,15 +33,19 @@ import {
   migrateLegacyJournal,
   saveJournalForDate,
 } from '@/lib/journalStorage';
+import { applyThemeAccent } from '@/lib/themeAccent';
+import { hasSeenOnboarding } from '@/lib/onboardingStorage';
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 
 type UndoToastState = {
-  kind: 'server' | 'custom';
+  kind: 'server' | 'custom' | 'exercise';
   taskId: string;
   title: string;
   expReward: number;
   flavor: string;
+  workoutId?: string;
+  exerciseId?: string;
 };
 
 function loadTodayJournal(): string {
@@ -60,6 +68,9 @@ export default function Dashboard() {
   const [journalSaving, setJournalSaving] = useState(false);
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const [customQuestTick, setCustomQuestTick] = useState(0);
+  const [expPulse, setExpPulse] = useState(false);
+  const [lastExpGain, setLastExpGain] = useState<number | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [perfModalOpen, setPerfModalOpen] = useState(false);
   const [perfSubmitting, setPerfSubmitting] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
@@ -101,6 +112,10 @@ export default function Dashboard() {
   }, [fetchAll]);
 
   useEffect(() => {
+    applyThemeAccent(user?.activeThemeAccent ?? null);
+  }, [user?.activeThemeAccent]);
+
+  useEffect(() => {
     if (activeTab === 'daily') {
       setJournalEntry(loadJournalForDate(getTodayKey()));
     }
@@ -112,11 +127,23 @@ export default function Dashboard() {
     return () => clearTimeout(t);
   }, [undoToast]);
 
+  useEffect(() => {
+    if (!hasSeenOnboarding()) setShowOnboarding(true);
+  }, []);
+
+  const triggerExpPulse = (amount: number) => {
+    if (amount <= 0) return;
+    setLastExpGain(amount);
+    setExpPulse(true);
+    window.setTimeout(() => setExpPulse(false), 550);
+  };
+
   const showClearToast = (
     taskId: string,
     title: string,
     expReward: number,
-    kind: 'server' | 'custom'
+    kind: UndoToastState['kind'],
+    extra?: Pick<UndoToastState, 'workoutId' | 'exerciseId'>
   ) => {
     setUndoToast({
       kind,
@@ -124,17 +151,26 @@ export default function Dashboard() {
       title,
       expReward,
       flavor: pickFlavor(QUEST_CLEARED_FLAVOR),
+      ...extra,
     });
+    if (kind !== 'custom') triggerExpPulse(expReward);
   };
 
   const handleUndoToast = async () => {
     if (!undoToast) return;
-    const { kind, taskId } = undoToast;
+    const { kind, taskId, workoutId, exerciseId } = undoToast;
     setUndoToast(null);
     try {
       if (kind === 'custom') {
         toggleCustomQuestCompleted(taskId, getTodayKey());
         setCustomQuestTick((n) => n + 1);
+        return;
+      }
+      if (kind === 'exercise' && workoutId && exerciseId) {
+        const result = await api.toggleExercise(workoutId, exerciseId);
+        await applyWorkoutSync(result);
+        const freshUser = await api.getUser();
+        setUser(freshUser);
         return;
       }
       const result = await api.uncompleteTask(taskId);
@@ -166,6 +202,7 @@ export default function Dashboard() {
         updateTaskInDailies(journalTask._id, true);
         setFlashingId(journalTask._id);
         setTimeout(() => setFlashingId(null), 600);
+        showClearToast(journalTask._id, journalTask.taskName, journalTask.expReward, 'server');
         if (result.levelUps.length > 0) {
           setLevelUps(result.levelUps);
         }
@@ -303,10 +340,32 @@ export default function Dashboard() {
   const handleToggleExercise = async (workoutId: string, exerciseId: string) => {
     setWorkoutSyncing(true);
     try {
+      const before = dailies?.workout?.exercises.find((ex) => ex._id === exerciseId);
+      const wasDone = before?.completed ?? false;
       const result = await api.toggleExercise(workoutId, exerciseId);
       await applyWorkoutSync(result);
       const freshUser = await api.getUser();
       setUser(freshUser);
+
+      if (!wasDone) {
+        const after = result.workout.exercises.find((ex) => ex._id === exerciseId);
+        const title = after?.name ?? before?.name ?? 'Exercise';
+        const workoutTask = dailies?.tasks.find((t) => t.taskName === WORKOUT_DAILY_TASK_NAME);
+        const exp =
+          result.taskReward?.action === 'completed'
+            ? (result.taskReward.expGained ?? workoutTask?.expReward ?? 0)
+            : 0;
+        showClearToast(exerciseId, title, exp, 'exercise', { workoutId, exerciseId });
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try {
+            navigator.vibrate(12);
+          } catch {
+            // ignore
+          }
+        }
+      } else {
+        setUndoToast(null);
+      }
     } catch (err) {
       await refreshDailies();
       alert(err instanceof Error ? err.message : 'Failed to update exercise');
@@ -443,8 +502,10 @@ export default function Dashboard() {
 
   const handleToggleSubtask = async (milestoneId: string, subtaskId: string) => {
     try {
-      const updated = await api.toggleMilestoneSubtask(milestoneId, subtaskId);
-      setMilestones((prev) => prev.map((m) => (m._id === milestoneId ? updated : m)));
+      await api.toggleMilestoneSubtask(milestoneId, subtaskId);
+      // Refetch so prerequisite unlocks propagate to dependent quests
+      const all = await api.getMilestones();
+      setMilestones(all);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update sub-task');
     }
@@ -452,12 +513,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 text-sm uppercase tracking-widest">Initializing System...</p>
-        </div>
-      </div>
+      <>
+        <header className="sticky top-0 z-40 border-b border-cyan-500/20 bg-slate-950/70 backdrop-blur-md h-14" />
+        <DashboardBootSkeleton />
+      </>
     );
   }
 
@@ -481,9 +540,15 @@ export default function Dashboard() {
     <>
       <LevelUpToast levels={levelUps} onDismiss={() => setLevelUps([])} />
 
+      {showOnboarding && <OnboardingModal onDone={() => setShowOnboarding(false)} />}
+
       {undoToast && (
         <ActionToast
-          message={`${undoToast.flavor}  ·  +${undoToast.expReward} EXP`}
+          message={
+            undoToast.expReward > 0
+              ? `${undoToast.flavor}  ·  +${undoToast.expReward} EXP`
+              : undoToast.flavor
+          }
           detail={`Quest cleared ✓ — ${undoToast.title}`}
           actionLabel="Undo"
           onAction={handleUndoToast}
@@ -501,6 +566,7 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-5 py-3 sm:py-4 pb-8">
         {activeTab === 'daily' && (
+          <SectionErrorBoundary label="Daily Grind" onRetry={fetchAll}>
           <DailyGrindTab
             key={`daily-${customQuestTick}`}
             user={user}
@@ -526,32 +592,97 @@ export default function Dashboard() {
             onLogValueChange={handleLogValueChange}
             completingId={completingId}
             flashingId={flashingId}
+            expPulse={expPulse}
+            lastExpGain={lastExpGain}
             onCustomQuestCleared={(q: CustomQuest) => {
               showClearToast(q.id, q.title, q.expReward, 'custom');
             }}
           />
+          </SectionErrorBoundary>
         )}
 
-        {activeTab === 'grind' && <GrindHubTab />}
+        {activeTab === 'grind' && (
+          <SectionErrorBoundary label="The Grind">
+            <GrindHubTab />
+          </SectionErrorBoundary>
+        )}
 
         {activeTab === 'profile' && (
+          <SectionErrorBoundary label="Player Profile" onRetry={fetchAll}>
           <PlayerProfileTab
             user={user}
             onTitleChange={handleTitleChange}
             onGoTrain={() => setActiveTab('daily')}
-            onShopPurchased={() => {
+            onReplayTutorial={() => setShowOnboarding(true)}
+            onShopPurchased={(patch) => {
+              if (patch) {
+                setUser((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        ...(patch.availableTitles
+                          ? { availableTitles: patch.availableTitles }
+                          : {}),
+                        ...(patch.activeThemeAccent !== undefined
+                          ? { activeThemeAccent: patch.activeThemeAccent }
+                          : {}),
+                      }
+                    : prev
+                );
+              }
               void fetchAll();
             }}
+            onThemeEquipped={(accent) => {
+              applyThemeAccent(accent);
+              setUser((prev) =>
+                prev ? { ...prev, activeThemeAccent: accent } : prev
+              );
+            }}
           />
+          </SectionErrorBoundary>
         )}
 
         {activeTab === 'milestones' && (
+          <SectionErrorBoundary label="Quest Board" onRetry={fetchAll}>
           <QuestBoardTab
             milestones={milestones}
             currentAge={user.currentAge ?? 20}
             onAgeChange={handleAgeChange}
             onToggleSubtask={handleToggleSubtask}
+            onStartSeason={async (groupKey, ageGoal) => {
+              const res = await api.startQuestSeason(groupKey, ageGoal);
+              const all = await api.getMilestones();
+              setMilestones(all);
+              alert(res.message);
+            }}
           />
+          </SectionErrorBoundary>
+        )}
+
+        {activeTab === 'settings' && (
+          <SectionErrorBoundary label="Settings">
+          <SettingsTab
+            user={user}
+            onSettingsChange={(settings, extra) =>
+              setUser((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      settings,
+                      ...(extra?.email !== undefined ? { email: extra.email } : {}),
+                    }
+                  : prev
+              )
+            }
+            onThemeEquipped={(accent) => {
+              applyThemeAccent(accent);
+              setUser((prev) =>
+                prev ? { ...prev, activeThemeAccent: accent } : prev
+              );
+            }}
+            onReplayOnboarding={() => setShowOnboarding(true)}
+          />
+          </SectionErrorBoundary>
         )}
       </main>
 
@@ -560,6 +691,7 @@ export default function Dashboard() {
           open={perfModalOpen}
           workout={dailies.workout}
           submitting={perfSubmitting}
+          weightUnit={user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'}
           onClose={() => setPerfModalOpen(false)}
           onSubmit={handleLogPerformanceSubmit}
         />
@@ -570,6 +702,7 @@ export default function Dashboard() {
         coach={coachFeedback}
         trainingWeek={coachMeta?.week}
         beginnerPhase={coachMeta?.beginner}
+        weightUnit={user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'}
         onClose={() => setCoachOpen(false)}
       />
     </>

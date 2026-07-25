@@ -5,6 +5,7 @@ import type { DailyTask, DayStatusInfo, GroupedTasks, Workout } from '@/types';
 import DayStatusSelect from './DayStatusSelect';
 import CollapsibleCategoryHeader from '@/components/quests/CollapsibleCategoryHeader';
 import { useCollapsibleSections } from '@/hooks/useCollapsibleSections';
+import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
 
 interface DailyTaskListProps {
   groupedTasks: GroupedTasks[];
@@ -26,6 +27,7 @@ interface DailyTaskListProps {
   onLogValueChange: (taskId: string, value: number) => void;
   completingId: string | null;
   flashingId: string | null;
+  weightUnit?: WeightUnit;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -137,6 +139,7 @@ export default function DailyTaskList({
   onLogValueChange,
   completingId,
   flashingId,
+  weightUnit = 'kg',
 }: DailyTaskListProps) {
   const isFrozen = dayStatus.isFrozen;
   const isRecovery = Boolean(workout?.isRecovery);
@@ -508,7 +511,7 @@ export default function DailyTaskList({
                             {exercise.name}
                             {exercise.currentWeightKg != null && (
                               <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
-                                {exercise.currentWeightKg}kg
+                                {formatWeight(exercise.currentWeightKg, weightUnit)}
                               </span>
                             )}
                           </span>

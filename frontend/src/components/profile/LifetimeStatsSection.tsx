@@ -1,6 +1,7 @@
 'use client';
 
 import type { LifetimeBadge, LifetimeStats, WeeklyProgress } from '@/types';
+import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
 
 interface LifetimeStatsSectionProps {
   lifetimeStats: LifetimeStats;
@@ -8,6 +9,7 @@ interface LifetimeStatsSectionProps {
   onGoTrain?: () => void;
   /** Which blocks to render. Default = all (backward compatible). */
   sections?: Array<'hunterProgress' | 'weeklyProgress' | 'personalRecords' | 'milestones'>;
+  weightUnit?: WeightUnit;
 }
 
 const MAIN_STATS = [
@@ -22,7 +24,7 @@ const MAIN_STATS = [
     key: 'totalWeightLiftedKg' as const,
     icon: '🏋️',
     label: 'Weight Lifted',
-    format: (v: number) => `${v.toLocaleString()} kg est.`,
+    format: (v: number, unit: WeightUnit) => `${formatWeight(v, unit)} est.`,
     accent: 'text-cyan-300',
   },
   {
@@ -101,6 +103,7 @@ export default function LifetimeStatsSection({
   weeklyProgress,
   onGoTrain,
   sections = ['hunterProgress', 'weeklyProgress', 'personalRecords', 'milestones'],
+  weightUnit = 'kg',
 }: LifetimeStatsSectionProps) {
   const weekly = weeklyProgress || {
     workoutsCompleted: 0,
@@ -125,6 +128,10 @@ export default function LifetimeStatsSection({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-stat-count={MAIN_STATS.length}>
           {MAIN_STATS.map((card) => {
             const value = lifetimeStats[card.key] ?? 0;
+            const subtitle =
+              card.key === 'totalWeightLiftedKg'
+                ? card.format(Number(value), weightUnit)
+                : (card.format as (v: number) => string)(Number(value));
             return (
               <div key={card.key} className="lifetime-stat-card">
                 <span className="text-xl mb-1 block" aria-hidden>
@@ -136,7 +143,7 @@ export default function LifetimeStatsSection({
                 <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">
                   {card.label}
                 </p>
-                <p className="text-[9px] text-slate-400 mt-0.5">{card.format(Number(value))}</p>
+                <p className="text-[9px] text-slate-400 mt-0.5">{subtitle}</p>
               </div>
             );
           })}
@@ -198,11 +205,18 @@ export default function LifetimeStatsSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {PR_CARDS.map((pr) => {
                 const val = lifetimeStats.personalRecords?.[pr.key];
+                let display = '—';
+                if (val != null) {
+                  display =
+                    pr.key === 'heaviestGobletSquatKg'
+                      ? formatWeight(val, weightUnit)
+                      : `${val} ${pr.suffix}`;
+                }
                 return (
                   <div key={pr.key} className="lifetime-stat-card !py-2.5">
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">{pr.label}</p>
                     <p className="text-lg font-bold font-mono-data text-slate-200 mt-1">
-                      {val != null ? `${val} ${pr.suffix}` : '—'}
+                      {display}
                     </p>
                   </div>
                 );

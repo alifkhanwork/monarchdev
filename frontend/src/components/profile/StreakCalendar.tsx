@@ -10,6 +10,8 @@ interface StreakCalendarProps {
   bestStreak: number;
   selectedDate: string;
   onSelectDate: (dateKey: string) => void;
+  /** 0 = Sunday, 1 = Monday (default). */
+  weekStartsOn?: 0 | 1;
 }
 
 const STATUS_CLASS: Record<DayCompletionEntry['status'] | 'empty' | 'journal', string> = {
@@ -20,16 +22,20 @@ const STATUS_CLASS: Record<DayCompletionEntry['status'] | 'empty' | 'journal', s
   journal: 'ring-1 ring-emerald-400/70',
 };
 
-function startOfWeekMonday(d: Date) {
+function startOfWeek(d: Date, weekStartsOn: 0 | 1) {
   const x = new Date(d);
-  const day = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - day);
+  const day = x.getDay();
+  const diff = weekStartsOn === 1 ? (day + 6) % 7 : day;
+  x.setDate(x.getDate() - diff);
   x.setHours(0, 0, 0, 0);
   return x;
 }
 
-function toKey(d: Date) {
-  return d.toISOString().slice(0, 10);
+function toLocalKey(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export default function StreakCalendar({
@@ -38,6 +44,7 @@ export default function StreakCalendar({
   bestStreak,
   selectedDate,
   onSelectDate,
+  weekStartsOn = 1,
 }: StreakCalendarProps) {
   const [fullYear, setFullYear] = useState(false);
   const weeksVisible = fullYear ? 52 : 10;
@@ -50,9 +57,9 @@ export default function StreakCalendar({
   const weeks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const end = startOfWeekMonday(today);
+    const end = startOfWeek(today, weekStartsOn);
     end.setDate(end.getDate() + 6);
-    const start = startOfWeekMonday(today);
+    const start = startOfWeek(today, weekStartsOn);
     start.setDate(start.getDate() - (weeksVisible - 1) * 7);
 
     const cols: string[][] = [];
@@ -60,13 +67,13 @@ export default function StreakCalendar({
     while (cursor <= end) {
       const col: string[] = [];
       for (let i = 0; i < 7; i++) {
-        col.push(toKey(cursor));
+        col.push(toLocalKey(cursor));
         cursor.setDate(cursor.getDate() + 1);
       }
       cols.push(col);
     }
     return cols;
-  }, [weeksVisible]);
+  }, [weeksVisible, weekStartsOn]);
 
   return (
     <div className="glass-panel !py-2.5 !px-3">
@@ -141,6 +148,9 @@ export default function StreakCalendar({
         </span>
         <span className="flex items-center gap-1">
           <span className={`heatmap-cell ${STATUS_CLASS.empty} ${STATUS_CLASS.journal}`} /> Journal
+        </span>
+        <span className="text-slate-600">
+          Weeks start {weekStartsOn === 0 ? 'Sunday' : 'Monday'}
         </span>
       </div>
     </div>

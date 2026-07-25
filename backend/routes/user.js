@@ -87,6 +87,12 @@ const formatUserResponse = (user, weeklyProgress = null) => {
     spendableExp: user.spendableExp || 0,
     ownedShopItems: user.ownedShopItems || [],
     activeThemeAccent: user.activeThemeAccent || null,
+    settings: {
+      weightUnit: user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
+      weekStartsOn: user.settings?.weekStartsOn === 0 ? 0 : 1,
+      weeklyDigestEnabled: user.settings?.weeklyDigestEnabled !== false,
+    },
+    email: user.email || '',
     cheatDayTokens: user.cheatDayTokens || 0,
   };
 };
@@ -170,6 +176,53 @@ router.patch('/title', async (req, res) => {
     res.json({ equippedTitle: user.equippedTitle, availableTitles: collectAvailableTitles(user, user.level, totalPower) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update title', error: error.message });
+  }
+});
+
+// PATCH /api/user/settings - Persist hunter preferences
+router.patch('/settings', async (req, res) => {
+  try {
+    const user = await getPlayer();
+    if (!user.settings) user.settings = {};
+
+    const { weightUnit, weekStartsOn, weeklyDigestEnabled, email } = req.body || {};
+    if (weightUnit !== undefined) {
+      if (weightUnit !== 'kg' && weightUnit !== 'lbs') {
+        return res.status(400).json({ message: 'weightUnit must be kg or lbs' });
+      }
+      user.settings.weightUnit = weightUnit;
+    }
+    if (weekStartsOn !== undefined) {
+      const n = Number(weekStartsOn);
+      if (n !== 0 && n !== 1) {
+        return res.status(400).json({ message: 'weekStartsOn must be 0 (Sunday) or 1 (Monday)' });
+      }
+      user.settings.weekStartsOn = n;
+    }
+    if (weeklyDigestEnabled !== undefined) {
+      user.settings.weeklyDigestEnabled = Boolean(weeklyDigestEnabled);
+    }
+    if (email !== undefined) {
+      const trimmed = String(email).trim();
+      if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return res.status(400).json({ message: 'Invalid email address' });
+      }
+      user.email = trimmed;
+    }
+
+    user.markModified('settings');
+    await saveWithRetry(user);
+
+    res.json({
+      email: user.email || '',
+      settings: {
+        weightUnit: user.settings.weightUnit === 'lbs' ? 'lbs' : 'kg',
+        weekStartsOn: user.settings.weekStartsOn === 0 ? 0 : 1,
+        weeklyDigestEnabled: user.settings.weeklyDigestEnabled !== false,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update settings', error: error.message });
   }
 });
 

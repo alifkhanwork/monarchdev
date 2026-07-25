@@ -28,11 +28,11 @@
     font-family: var(--font-system);
     background-color: var(--bg-deep);
     background-image:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0, 229, 255, 0.14) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(var(--neon-teal-rgb), 0.14) 0%, transparent 55%),
       radial-gradient(ellipse 50% 40% at 80% 100%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
       radial-gradient(ellipse 40% 30% at 10% 80%, rgba(20, 184, 166, 0.06) 0%, transparent 50%),
-      linear-gradient(rgba(0, 229, 255, 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 229, 255, 0.025) 1px, transparent 1px);
+      linear-gradient(rgba(var(--neon-teal-rgb), 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--neon-teal-rgb), 0.025) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
     min-height: 100dvh;
   }
@@ -42,6 +42,18 @@
   }
 
   :focus-visible {
+    outline: 2px solid rgba(var(--neon-teal-rgb), 0.85);
+    outline-offset: 2px;
+  }
+
+  /* Restore visible focus when utilities strip the default outline */
+  .focus-ring:focus-visible,
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role='button']:focus-visible {
     outline: 2px solid rgba(var(--neon-teal-rgb), 0.85);
     outline-offset: 2px;
   }
@@ -414,6 +426,14 @@
     pointer-events: none;
   }
 
+  .exp-bar-pulse {
+    animation: expBarPulse 0.55s ease-out;
+  }
+
+  .exp-num-pulse {
+    animation: expNumPulse 0.55s ease-out;
+  }
+
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 229, 255, 0.25) transparent;
@@ -545,6 +565,36 @@
     }
   }
 
+  @keyframes expBarPulse {
+    0% {
+      filter: brightness(1);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.45);
+    }
+    40% {
+      filter: brightness(1.35);
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.75);
+    }
+    100% {
+      filter: brightness(1);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.45);
+    }
+  }
+
+  @keyframes expNumPulse {
+    0% {
+      color: #2dd4bf;
+      transform: scale(1);
+    }
+    35% {
+      color: #fcd34d;
+      transform: scale(1.08);
+    }
+    100% {
+      color: #2dd4bf;
+      transform: scale(1);
+    }
+  }
+
   @keyframes levelUpFlash {
     0% {
       opacity: 0;
@@ -577,11 +627,22 @@
   }
 
   .quest-log-input {
-    @apply text-right text-xs bg-slate-950/70 border px-2 py-1 text-cyan-300 focus:outline-none;
+    @apply text-right text-xs bg-slate-950/70 border px-2 py-1 text-cyan-300;
     font-family: var(--font-mono);
     border-radius: var(--radius);
     border-color: rgba(var(--neon-teal-rgb), 0.25);
     width: 3.5rem;
+  }
+
+  .quest-log-input:focus {
+    outline: none;
+    border-color: rgba(var(--neon-teal-rgb), 0.55);
+    box-shadow: 0 0 0 2px rgba(var(--neon-teal-rgb), 0.25);
+  }
+
+  .quest-log-input:focus-visible {
+    outline: 2px solid rgba(var(--neon-teal-rgb), 0.85);
+    outline-offset: 2px;
   }
 
   .workout-bulk-btn {

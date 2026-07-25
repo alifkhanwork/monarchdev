@@ -13,6 +13,9 @@ interface ExpProgressBarProps {
   questTotal?: number;
   freezeHistory?: FreezeHistoryEntry[];
   sticky?: boolean;
+  /** Brief pulse when EXP was just awarded */
+  expPulse?: boolean;
+  lastExpGain?: number | null;
 }
 
 export default function ExpProgressBar({
@@ -25,6 +28,8 @@ export default function ExpProgressBar({
   questTotal,
   freezeHistory = [],
   sticky = false,
+  expPulse = false,
+  lastExpGain = null,
 }: ExpProgressBarProps) {
   const percent = Math.min((currentExp / expToNextLevel) * 100, 100);
 
@@ -61,12 +66,23 @@ export default function ExpProgressBar({
           <div className="flex-1 min-w-0 relative">
             <div className="progress-track !h-2">
               <div
-                className="exp-bar-fill h-full rounded-full bg-gradient-to-r from-cyan-600 via-[#00E5FF] to-teal-300 shadow-[0_0_10px_rgba(0,229,255,0.45)]"
+                className={`exp-bar-fill h-full rounded-full bg-gradient-to-r from-cyan-600 via-[#00E5FF] to-teal-300 shadow-[0_0_10px_rgba(0,229,255,0.45)] ${
+                  expPulse ? 'exp-bar-pulse' : ''
+                }`}
                 style={{ width: `${percent}%` }}
               />
             </div>
+            {expPulse && lastExpGain != null && lastExpGain > 0 && (
+              <span className="exp-float absolute -top-4 right-0 text-[11px] font-bold font-mono-data text-amber-300">
+                +{lastExpGain}
+              </span>
+            )}
           </div>
-          <span className="text-[10px] sm:text-[11px] text-neon-teal font-mono-data shrink-0 whitespace-nowrap">
+          <span
+            className={`text-[10px] sm:text-[11px] text-neon-teal font-mono-data shrink-0 whitespace-nowrap ${
+              expPulse ? 'exp-num-pulse' : ''
+            }`}
+          >
             {currentExp}/{expToNextLevel}
             <span className="text-slate-500 ml-1 hidden sm:inline">{percent.toFixed(0)}%</span>
           </span>

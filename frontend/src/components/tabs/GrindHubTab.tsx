@@ -7,6 +7,8 @@ import type { GrindQuest, GrindResponse } from '@/types';
 import type { GrindPeriod } from '@/types/tabs';
 import { loadGrindPeriod, saveGrindPeriod } from '@/types/tabs';
 import GrindQuestCard from '@/components/grind/GrindQuestCard';
+import { PanelSkeleton } from '@/components/ui/Skeleton';
+import { SectionErrorFallback } from '@/components/ui/SectionErrorBoundary';
 
 const CATEGORY_ORDER = ['Fitness', 'Health', 'Knowledge', 'Professional', 'Elite'];
 
@@ -17,6 +19,7 @@ export default function GrindHubTab() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState('');
   const [claimToast, setClaimToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setPeriod(loadGrindPeriod());
@@ -29,6 +32,7 @@ export default function GrindHubTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = period === 'weekly' ? await api.getWeeklyGrind() : await api.getMonthlyGrind();
       setData(res);
@@ -40,6 +44,9 @@ export default function GrindHubTab() {
             .join(', ')})`
         );
       }
+    } catch (e) {
+      setData(null);
+      setError(e instanceof Error ? e.message : 'Failed to load grind missions');
     } finally {
       setLoading(false);
     }
@@ -152,9 +159,12 @@ export default function GrindHubTab() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+        <div className="space-y-2.5">
+          <PanelSkeleton rows={3} />
+          <PanelSkeleton rows={3} />
         </div>
+      ) : error ? (
+        <SectionErrorFallback label="The Grind" message={error} onRetry={load} />
       ) : (
         <div className="space-y-3">
           {grouped.map((group) => (

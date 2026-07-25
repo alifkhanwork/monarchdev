@@ -102,6 +102,12 @@ export interface User {
   spendableExp?: number;
   ownedShopItems?: string[];
   activeThemeAccent?: string | null;
+  settings?: {
+    weightUnit: 'kg' | 'lbs';
+    weekStartsOn: 0 | 1;
+    weeklyDigestEnabled?: boolean;
+  };
+  email?: string;
   cheatDayTokens?: number;
 }
 
@@ -216,6 +222,10 @@ export interface Milestone {
   subTasks: MilestoneSubTask[];
   progressPercent: number;
   rewardItem: Pick<GearItem, '_id' | 'name' | 'type' | 'rarity' | 'imageUrl'> | null;
+  /** Prerequisite quest id — null/undefined = unlocked (backward compatible). */
+  requiresMilestoneId?: string | null;
+  isLocked?: boolean;
+  requiresTitle?: string | null;
 }
 
 export interface GrindQuest {

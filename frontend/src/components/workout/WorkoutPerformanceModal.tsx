@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Exercise, Workout } from '@/types';
+import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
 
 export interface LoggedSet {
   setNumber: number;
@@ -28,9 +29,10 @@ interface WorkoutPerformanceModalProps {
     exercises: LoggedExercisePayload[];
   }) => Promise<void>;
   submitting?: boolean;
+  weightUnit?: 'kg' | 'lbs';
 }
 
-const AVAILABLE_WEIGHTS = [5, 7.5, 10, 12.5, 15];
+const AVAILABLE_WEIGHTS_KG = [5, 7.5, 10, 12.5, 15];
 
 function isLoggable(ex: Exercise) {
   if (ex.trackingType === 'steps') return false;
@@ -55,6 +57,7 @@ export default function WorkoutPerformanceModal({
   onClose,
   onSubmit,
   submitting,
+  weightUnit = 'kg',
 }: WorkoutPerformanceModalProps) {
   const loggable = useMemo(() => workout.exercises.filter(isLoggable), [workout.exercises]);
 
@@ -167,9 +170,9 @@ export default function WorkoutPerformanceModal({
                     }
                     className="text-[11px] bg-slate-950/80 border border-cyan-500/30 rounded px-2 py-1 text-neon-teal font-mono-data"
                   >
-                    {AVAILABLE_WEIGHTS.map((w) => (
+                    {AVAILABLE_WEIGHTS_KG.map((w) => (
                       <option key={w} value={w}>
-                        {w} kg
+                        {formatWeight(w, weightUnit as WeightUnit)}
                       </option>
                     ))}
                   </select>

@@ -101,6 +101,7 @@ export default function GrindQuestCard({ quest, onIncrement, updating }: GrindQu
                 disabled={updating || quest.currentProgress <= 0}
                 onClick={() => onIncrement(quest._id, -delta)}
                 className="grind-btn grind-btn-minus"
+                aria-label={`Decrease ${quest.title} by ${delta}`}
               >
                 −{delta}
               </button>
@@ -109,6 +110,7 @@ export default function GrindQuestCard({ quest, onIncrement, updating }: GrindQu
                 disabled={updating || quest.currentProgress >= quest.targetCount}
                 onClick={() => onIncrement(quest._id, delta)}
                 className="grind-btn grind-btn-plus"
+                aria-label={`Increase ${quest.title} by ${delta}`}
               >
                 +{delta}
               </button>

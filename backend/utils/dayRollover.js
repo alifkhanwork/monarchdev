@@ -1,7 +1,7 @@
 const DailyTask = require('../models/DailyTask');
 const Workout = require('../models/Workout');
 const { getWorkoutDayType, isSameDay, startOfDay } = require('./dateHelpers');
-const { revertExpAndLevelDown, normalizeStreaks } = require('./gameLogic');
+const { revertExpAndLevelDown, normalizeStreaks, applyStreakForDayOutcome } = require('./gameLogic');
 const { appendStatHistory } = require('./statHistory');
 const { saveWithRetry } = require('./saveWithRetry');
 const {
@@ -69,6 +69,7 @@ const processDayRollover = async (user) => {
         logFreezeDay(user, dayKey, dayStatus);
         user.dayCompletionLog = user.dayCompletionLog || [];
         user.dayCompletionLog.push({ date: dayKey, status: 'frozen' });
+        applyStreakForDayOutcome(user, 'frozen');
       } else {
         const { complete, incompleteCount } = await evaluateDayComplete(lastProcessed);
 
@@ -82,11 +83,10 @@ const processDayRollover = async (user) => {
         }
 
         if (complete) {
-          user.currentStreak = (user.currentStreak || 0) + 1;
-          user.bestStreak = Math.max(user.bestStreak || 0, user.currentStreak);
+          applyStreakForDayOutcome(user, 'complete');
           user.lastDayCompleteDate = lastProcessed;
         } else {
-          user.currentStreak = 0;
+          applyStreakForDayOutcome(user, 'incomplete');
           // Mild incomplete-day penalty (frozen days never reach here)
           const expLost = Math.min(incompleteCount * 5, 50);
           if (expLost > 0) {

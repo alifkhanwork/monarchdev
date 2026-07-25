@@ -1,5 +1,7 @@
 'use client';
 
+import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
+
 interface CoachCard {
   exerciseName: string;
   verdict: string;
@@ -19,6 +21,7 @@ interface CoachFeedbackModalProps {
   } | null;
   trainingWeek?: number;
   beginnerPhase?: boolean;
+  weightUnit?: WeightUnit;
 }
 
 const VERDICT_LABEL: Record<string, string> = {
@@ -43,6 +46,7 @@ export default function CoachFeedbackModal({
   coach,
   trainingWeek,
   beginnerPhase,
+  weightUnit = 'kg',
 }: CoachFeedbackModalProps) {
   if (!open || !coach) return null;
 
@@ -90,7 +94,9 @@ export default function CoachFeedbackModal({
                 </div>
                 <p className="text-[11px] mt-1 opacity-90">{card.recommendation}</p>
                 {card.nextWeight != null && card.verdict === 'progress' && (
-                  <p className="text-[11px] font-mono-data mt-1">Next load → {card.nextWeight} kg</p>
+                  <p className="text-[11px] font-mono-data mt-1">
+                    Next load → {formatWeight(card.nextWeight, weightUnit)}
+                  </p>
                 )}
               </li>
             ))}

@@ -12,20 +12,33 @@ import StreakCalendar from '@/components/profile/StreakCalendar';
 import LifetimeStatsSection from '@/components/profile/LifetimeStatsSection';
 import TrainingProgressSection from '@/components/profile/TrainingProgressSection';
 import RewardShopSection from '@/components/profile/RewardShopSection';
+import InsightsSection from '@/components/profile/InsightsSection';
 import JournalPanel from '@/components/tabs/JournalPanel';
+import SectionErrorBoundary from '@/components/ui/SectionErrorBoundary';
 import { exportHunterBackup } from '@/lib/exportBackup';
+import {
+  downloadBlob,
+  renderProgressSnapshot,
+} from '@/lib/progressSnapshot';
+import { DEFAULT_ACCENT_HEX, THEME_ACCENTS } from '@/lib/themeAccent';
 import {
   formatJournalDateLabel,
   getTodayKey,
   loadJournalForDate,
   saveJournalForDate,
 } from '@/lib/journalStorage';
+import type { WeightUnit } from '@/lib/weightUnits';
 
 interface PlayerProfileTabProps {
   user: User;
   onTitleChange: (title: string) => void;
   onGoTrain?: () => void;
-  onShopPurchased?: () => void;
+  onReplayTutorial?: () => void;
+  onShopPurchased?: (result?: {
+    availableTitles?: string[];
+    activeThemeAccent?: string | null;
+  }) => void;
+  onThemeEquipped?: (accent: string | null) => void;
 }
 
 type ChartPanel = 'performance' | 'attributes';
@@ -56,12 +69,15 @@ export default function PlayerProfileTab({
   user,
   onTitleChange,
   onGoTrain,
+  onReplayTutorial,
   onShopPurchased,
+  onThemeEquipped,
 }: PlayerProfileTabProps) {
   const [selectedDate, setSelectedDate] = useState(getTodayKey);
   const [journalEntry, setJournalEntry] = useState('');
   const [activePanel, setActivePanel] = useState<ChartPanel>('performance');
   const [subTab, setSubTab] = useState<ProfileSubTab>('overview');
+  const [exportingImage, setExportingImage] = useState(false);
 
   useEffect(() => {
     setSubTab(loadProfileSubTab());
@@ -74,6 +90,30 @@ export default function PlayerProfileTab({
   const selectSubTab = (next: ProfileSubTab) => {
     setSubTab(next);
     saveProfileSubTab(next);
+  };
+
+  const handleExportImage = async () => {
+    setExportingImage(true);
+    try {
+      const accentKey =
+        user.activeThemeAccent === 'crimson' || user.activeThemeAccent === 'violet'
+          ? user.activeThemeAccent
+          : null;
+      const blob = await renderProgressSnapshot({
+        username: user.username,
+        level: user.level,
+        totalPower: user.totalPower,
+        currentStreak: user.streak.current,
+        bestStreak: Math.max(user.streak.best, user.streak.current),
+        equippedTitle: user.equippedTitle,
+        accentHex: accentKey ? THEME_ACCENTS[accentKey].hex : DEFAULT_ACCENT_HEX,
+      });
+      downloadBlob(blob, `dev-monarch-snapshot-${getTodayKey()}.png`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to export image');
+    } finally {
+      setExportingImage(false);
+    }
   };
 
   const handleJournalSave = async (text: string) => {
@@ -111,6 +151,36 @@ export default function PlayerProfileTab({
           Base + gear + level
         </p>
       </div>
+
+      <div className="glass-panel !p-2.5 !py-3">
+        <p className="panel-label mb-1 text-center">Hunter Stats</p>
+        <p className="text-[9px] text-slate-400 text-center mb-2 uppercase tracking-wider">
+          STR · VIT · INT · PER · AGI
+          {user.effectiveStats ? ' · gear-adjusted' : ''}
+        </p>
+        <StatRadarChart
+          stats={user.stats}
+          effectiveStats={user.effectiveStats}
+          compact
+        />
+        <div className="mt-2 grid grid-cols-5 gap-1 text-center">
+          {(
+            [
+              ['STR', user.effectiveStats?.strength ?? user.stats.strength],
+              ['VIT', user.effectiveStats?.vitality ?? user.stats.vitality],
+              ['INT', user.effectiveStats?.intelligence ?? user.stats.intelligence],
+              ['PER', user.effectiveStats?.perception ?? user.stats.perception],
+              ['AGI', user.effectiveStats?.agility ?? user.stats.agility],
+            ] as const
+          ).map(([label, val]) => (
+            <div key={label}>
+              <p className="text-[9px] text-cyan-400/80 font-bold">{label}</p>
+              <p className="text-[11px] font-mono-data text-slate-200">{val}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <GearCard item={user.equippedWeapon} slot="weapon" emptyLabel="No weapon equipped" />
       <GearCard item={user.equippedRelic} slot="relic" emptyLabel="No relic equipped" />
       <LockedGearSlot slotName="Armor Slot" unlockHint="Unlock at Level 10" />
@@ -138,7 +208,7 @@ export default function PlayerProfileTab({
             <select
               value={user.equippedTitle}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="mt-1 block w-full text-[13px] bg-slate-950/70 border border-cyan-500/25 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none max-w-xs min-h-[36px]"
+              className="mt-1 block w-full text-[13px] bg-slate-950/70 border border-cyan-500/25 rounded px-2.5 py-1.5 text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400/80 max-w-xs min-h-[36px]"
             >
               {user.availableTitles.map((title) => (
                 <option key={title} value={title}>
@@ -148,7 +218,8 @@ export default function PlayerProfileTab({
             </select>
           </label>
           <p className="text-meta max-w-xs sm:text-right">
-            Unlock titles from rank gates &amp; lifetime badges (Scholar, Warrior, Hydrated…).
+            Titles unlock from rank gates, lifetime badges, and the EXP Reward Shop. Only owned
+            titles appear here.
           </p>
           <button
             type="button"
@@ -157,6 +228,23 @@ export default function PlayerProfileTab({
           >
             Export data
           </button>
+          <button
+            type="button"
+            className="journal-action-btn journal-action-btn-muted"
+            onClick={handleExportImage}
+            disabled={exportingImage}
+          >
+            {exportingImage ? 'Rendering…' : 'Export as Image'}
+          </button>
+          {onReplayTutorial && (
+            <button
+              type="button"
+              className="journal-action-btn journal-action-btn-muted"
+              onClick={onReplayTutorial}
+            >
+              Replay tutorial
+            </button>
+          )}
         </div>
       </div>
 
@@ -220,20 +308,23 @@ export default function PlayerProfileTab({
               </div>
 
               {activePanel === 'performance' ? (
-                <PerformanceOverviewChart
-                  history={user.statHistory || []}
-                  currentPower={user.totalPower}
-                  level={user.level}
-                />
+                <SectionErrorBoundary label="Performance Graph">
+                  <PerformanceOverviewChart
+                    history={user.statHistory || []}
+                    currentPower={user.totalPower}
+                    level={user.level}
+                  />
+                </SectionErrorBoundary>
               ) : (
                 <div className="flex flex-col md:flex-row gap-3 items-center md:items-start">
                   <div className="flex justify-center max-w-[260px] w-full shrink-0">
                     <StatRadarChart stats={user.stats} effectiveStats={user.effectiveStats} />
                   </div>
                   <p className="text-meta md:pt-2">
-                    Hunter attributes: Strength (workouts), Endurance (cardio &amp; recovery),
-                    Intelligence (study &amp; portfolio), Perception (journal &amp; reading),
-                    Vitality (water, sleep, nutrition). Gear multiplies soft stats on the radar.
+                    Hunter attributes: Strength / STR (workouts), Vitality / VIT (sleep, water,
+                    nutrition), Intelligence / INT (study &amp; portfolio), Perception / PER
+                    (journal &amp; reading), Agility / AGI (cardio &amp; recovery). Cyan fill uses
+                    gear-adjusted (effective) stats; slate outline is base when gear boosts apply.
                   </p>
                 </div>
               )}
@@ -248,16 +339,22 @@ export default function PlayerProfileTab({
               weeklyProgress={user.weeklyProgress}
               onGoTrain={onGoTrain}
               sections={['hunterProgress']}
+              weightUnit={(user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg') as WeightUnit}
             />
           )}
 
+          <InsightsSection user={user} />
+
+          <SectionErrorBoundary label="Streak Heatmap">
           <StreakCalendar
             dayCompletionLog={user.dayCompletionLog || []}
             currentStreak={user.streak.current}
             bestStreak={Math.max(user.streak.best, user.streak.current)}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+            weekStartsOn={user.settings?.weekStartsOn === 0 ? 0 : 1}
           />
+          </SectionErrorBoundary>
 
           <JournalPanel
             journalEntry={journalEntry}
@@ -269,7 +366,7 @@ export default function PlayerProfileTab({
         </div>
       ) : (
         <div className="space-y-2.5">
-          <RewardShopSection onPurchased={onShopPurchased} />
+          <RewardShopSection onPurchased={onShopPurchased} onThemeEquipped={onThemeEquipped} />
 
           {user.lifetimeStats && (
             <LifetimeStatsSection
@@ -277,10 +374,16 @@ export default function PlayerProfileTab({
               weeklyProgress={user.weeklyProgress}
               onGoTrain={onGoTrain}
               sections={['weeklyProgress', 'personalRecords', 'milestones']}
+              weightUnit={(user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg') as WeightUnit}
             />
           )}
 
-          <TrainingProgressSection onGoTrain={onGoTrain} />
+          <SectionErrorBoundary label="Training History">
+          <TrainingProgressSection
+            onGoTrain={onGoTrain}
+            weightUnit={(user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg') as WeightUnit}
+          />
+          </SectionErrorBoundary>
         </div>
       )}
     </div>

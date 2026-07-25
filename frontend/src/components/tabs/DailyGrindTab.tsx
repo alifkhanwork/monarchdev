@@ -47,6 +47,8 @@ interface DailyGrindTabProps {
   completingId: string | null;
   flashingId: string | null;
   onCustomQuestCleared?: (quest: CustomQuest) => void;
+  expPulse?: boolean;
+  lastExpGain?: number | null;
 }
 
 export default function DailyGrindTab({
@@ -72,11 +74,15 @@ export default function DailyGrindTab({
   completingId,
   flashingId,
   onCustomQuestCleared,
+  expPulse = false,
+  lastExpGain = null,
 }: DailyGrindTabProps) {
   const [journalOpen, setJournalOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingQuest, setEditingQuest] = useState<CustomQuest | null>(null);
   const [customQuests, setCustomQuests] = useState<CustomQuest[]>([]);
   const [ritualDone, setRitualDone] = useState<Record<string, boolean>>({});
+  const [flashingCustomId, setFlashingCustomId] = useState<string | null>(null);
   const journalPending = !journalFilled && !journalQuestCompleted;
   const todayKey = getTodayKey();
   const isRest = dailies.dayStatus.status === 'rest';
@@ -123,6 +129,8 @@ export default function DailyGrindTab({
         questDone={questCounts.done}
         questTotal={questCounts.total}
         freezeHistory={dailies.freezeHistory}
+        expPulse={expPulse}
+        lastExpGain={lastExpGain}
       />
 
       {!isRest && (
@@ -175,6 +183,7 @@ export default function DailyGrindTab({
         onLogValueChange={onLogValueChange}
         completingId={completingId}
         flashingId={flashingId}
+        weightUnit={user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'}
       />
 
       <section className="glass-panel !py-2.5 space-y-2">
@@ -186,7 +195,7 @@ export default function DailyGrindTab({
           collapsed={customCollapsed}
           onToggle={() => toggleCustom(CUSTOM_SECTION)}
           trailing={
-            !showAddForm ? (
+            !showAddForm && !editingQuest ? (
               <span
                 role="presentation"
                 onClick={(e) => e.stopPropagation()}
@@ -208,17 +217,28 @@ export default function DailyGrindTab({
           <>
             <p className="text-meta px-0.5">One-offs for today — local to this Hunter node</p>
 
-            {showAddForm && (
+            {(showAddForm || editingQuest) && (
               <CustomQuestForm
+                key={editingQuest?.id ?? 'new'}
+                editing={editingQuest}
                 onCreated={() => {
                   refreshCustom();
                   setShowAddForm(false);
+                  setEditingQuest(null);
                 }}
-                onCancel={() => setShowAddForm(false)}
+                onUpdated={() => {
+                  refreshCustom();
+                  setEditingQuest(null);
+                  setShowAddForm(false);
+                }}
+                onCancel={() => {
+                  setShowAddForm(false);
+                  setEditingQuest(null);
+                }}
               />
             )}
 
-            {customQuests.length === 0 && !showAddForm && (
+            {customQuests.length === 0 && !showAddForm && !editingQuest && (
               <p className="text-meta py-2">
                 No custom quests yet — add one when the System needs a side gate.
               </p>
@@ -231,27 +251,57 @@ export default function DailyGrindTab({
                   <li key={q.id}>
                     <QuestCheckRow
                       done={done}
+                      flashing={flashingCustomId === q.id}
                       title={q.title}
-                      meta={`+${q.expReward} EXP · ${q.statModifier.toUpperCase()}${
+                      meta={`${q.recurring ? '↻ · ' : ''}+${q.expReward} EXP · ${q.statModifier.toUpperCase()}${
                         q.targetCount ? ` · ×${q.targetCount}` : ''
                       }`}
                       onToggle={() => {
                         const nowDone = toggleCustomQuestCompleted(q.id, todayKey);
                         setCustomQuests([...loadCustomQuestsForDate(todayKey)]);
-                        if (nowDone) onCustomQuestCleared?.(q);
+                        if (nowDone) {
+                          setFlashingCustomId(q.id);
+                          setTimeout(() => setFlashingCustomId(null), 550);
+                          onCustomQuestCleared?.(q);
+                        }
                       }}
                       trailing={
-                        <button
-                          type="button"
-                          className="text-[10px] text-slate-500 hover:text-red-300 px-2 min-h-[36px]"
-                          onClick={() => {
-                            removeCustomQuest(q.id, todayKey);
-                            refreshCustom();
-                          }}
-                          aria-label={`Remove ${q.title}`}
-                        >
-                          Remove
-                        </button>
+                        <span className="flex items-center shrink-0">
+                          <button
+                            type="button"
+                            className="text-[12px] text-slate-500 hover:text-cyan-300 px-1.5 min-h-[36px] min-w-[36px]"
+                            onClick={() => {
+                              setShowAddForm(false);
+                              setEditingQuest(q);
+                            }}
+                            aria-label={`Edit ${q.title}`}
+                            title="Edit"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[12px] text-slate-500 hover:text-red-300 px-1.5 min-h-[36px] min-w-[36px]"
+                            onClick={() => {
+                              if (
+                                !window.confirm(
+                                  done
+                                    ? `Delete “${q.title}”? Already-earned server EXP is unchanged (custom quests are local).`
+                                    : `Delete “${q.title}”?`
+                                )
+                              ) {
+                                return;
+                              }
+                              removeCustomQuest(q.id, todayKey);
+                              if (editingQuest?.id === q.id) setEditingQuest(null);
+                              refreshCustom();
+                            }}
+                            aria-label={`Delete ${q.title}`}
+                            title="Delete"
+                          >
+                            🗑
+                          </button>
+                        </span>
                       }
                     />
                   </li>

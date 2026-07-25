@@ -1,4 +1,8 @@
-import { loadAllCustomCompletions, loadAllCustomQuests } from './customQuestsStorage';
+import {
+  loadAllCustomCompletions,
+  loadAllCustomQuests,
+  loadRecurringCustomQuests,
+} from './customQuestsStorage';
 import { getTodayKey } from './journalStorage';
 import type { User } from '@/types';
 
@@ -30,9 +34,11 @@ export function exportHunterBackup(user: User) {
       lifetimeStats: user.lifetimeStats,
       dayCompletionLog: user.dayCompletionLog || [],
       availableTitles: user.availableTitles,
+      settings: user.settings,
     },
     journals: readJournals(),
     customQuests: loadAllCustomQuests(),
+    customQuestRecurring: loadRecurringCustomQuests(),
     customQuestCompletions: loadAllCustomCompletions(),
   };
 

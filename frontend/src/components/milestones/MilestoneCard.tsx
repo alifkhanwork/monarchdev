@@ -40,6 +40,7 @@ export default function MilestoneCard({
   const overdue = isMilestoneOverdue(milestone.targetDate, milestone.isCompleted);
   const hasSubtasks = milestone.subTasks.length > 0;
   const rank = questRankFromExp(milestone.expReward, isSSR);
+  const locked = Boolean(milestone.isLocked);
 
   const rewardParts: string[] = [];
   if (milestone.expReward > 0) rewardParts.push(`+${milestone.expReward} EXP`);
@@ -51,17 +52,32 @@ export default function MilestoneCard({
     <article
       className={`milestone-quest-card ${milestone.isCompleted ? 'milestone-quest-done' : ''} ${
         isSSR ? 'milestone-quest-ssr' : ''
-      } ${overdue ? 'milestone-quest-overdue' : ''}`}
+      } ${overdue && !locked ? 'milestone-quest-overdue' : ''} ${
+        locked ? 'opacity-60 border-slate-600/40' : ''
+      }`}
+      aria-disabled={locked || undefined}
     >
       <button
         type="button"
         className="w-full text-left"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${milestone.title}${
+          locked ? ' (locked)' : ''
+        }`}
       >
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              {locked && (
+                <span
+                  className="shrink-0 text-[11px] text-slate-400"
+                  aria-hidden
+                  title="Locked"
+                >
+                  🔒
+                </span>
+              )}
               <span
                 className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border font-mono-data ${QUEST_RANK_STYLES[rank]}`}
                 title={`Rank ${rank}`}
@@ -70,21 +86,30 @@ export default function MilestoneCard({
               </span>
               <h3
                 className={`text-[13px] font-semibold truncate ${
-                  milestone.isCompleted ? 'text-slate-500 line-through' : 'text-white'
+                  milestone.isCompleted
+                    ? 'text-slate-500 line-through'
+                    : locked
+                      ? 'text-slate-400'
+                      : 'text-white'
                 }`}
               >
                 {milestone.title}
               </h3>
+              {locked && milestone.requiresTitle && (
+                <span className="shrink-0 text-[10px] text-amber-300/80 font-mono-data">
+                  Requires: {milestone.requiresTitle}
+                </span>
+              )}
               {target && (
                 <span
                   className={`shrink-0 text-[11px] font-mono-data ${
-                    overdue ? 'text-red-400 font-semibold' : 'text-slate-400'
+                    overdue && !locked ? 'text-red-400 font-semibold' : 'text-slate-400'
                   }`}
                 >
                   {target}
                 </span>
               )}
-              {overdue && (
+              {overdue && !locked && (
                 <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-red-500/50 bg-red-950/50 text-red-300">
                   Overdue
                 </span>
@@ -112,28 +137,34 @@ export default function MilestoneCard({
                   className={`progress-fill ${
                     milestone.isCompleted
                       ? '!bg-gradient-to-r !from-emerald-600 !to-emerald-400'
-                      : overdue
+                      : overdue && !locked
                         ? '!bg-gradient-to-r !from-red-700 !to-red-400'
-                        : ''
+                        : locked
+                          ? '!bg-slate-600'
+                          : ''
                   }`}
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${locked ? 0 : progress}%` }}
                 />
               </div>
               <span
                 className={`text-[10px] font-mono-data shrink-0 ${
                   milestone.isCompleted
                     ? 'text-emerald-400'
-                    : overdue
-                      ? 'text-red-400'
-                      : 'text-cyan-400'
+                    : locked
+                      ? 'text-slate-500'
+                      : overdue
+                        ? 'text-red-400'
+                        : 'text-cyan-400'
                 }`}
               >
-                {milestone.isCompleted ? 'Done' : `${progress}%`}
+                {locked ? 'Locked' : milestone.isCompleted ? 'Done' : `${progress}%`}
               </span>
             </div>
           </div>
           {(hasSubtasks || !compact) && (
-            <span className="text-cyan-400/60 text-[10px] shrink-0">{expanded ? '▼' : '▶'}</span>
+            <span className="text-cyan-400/60 text-[10px] shrink-0" aria-hidden>
+              {expanded ? '▼' : '▶'}
+            </span>
           )}
         </div>
       </button>
@@ -144,17 +175,30 @@ export default function MilestoneCard({
             {CATEGORY_LABELS[milestone.category] ?? milestone.category}
             {milestone.rewardItem ? ` · ${milestone.rewardItem.name}` : ''}
           </p>
+          {locked && milestone.requiresTitle && (
+            <p className="text-[12px] text-amber-200/90">
+              Clear “{milestone.requiresTitle}” to unlock this gate.
+            </p>
+          )}
           {hasSubtasks && (
             <ul className="space-y-1">
               {milestone.subTasks.map((st) => (
                 <li key={st._id}>
-                  <label className="flex items-center gap-2 cursor-pointer text-[13px] min-h-[36px]">
+                  <label
+                    className={`flex items-center gap-2 text-[13px] min-h-[36px] ${
+                      locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                    }`}
+                  >
                     <span className="quest-hit">
                       <input
                         type="checkbox"
                         checked={st.isCompleted}
-                        onChange={() => onToggleSubtask(milestone._id, st._id)}
+                        disabled={locked}
+                        onChange={() => {
+                          if (!locked) onToggleSubtask(milestone._id, st._id);
+                        }}
                         className="quest-native-checkbox"
+                        aria-label={st.title}
                       />
                     </span>
                     <span className={st.isCompleted ? 'text-slate-500 line-through' : 'text-slate-300'}>

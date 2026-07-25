@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { CustomQuest, CustomQuestStat } from '@/lib/customQuestsStorage';
 import { addCustomQuest, updateCustomQuest } from '@/lib/customQuestsStorage';
+import { LIMITS, validateCustomQuestTitle } from '@/lib/inputValidation';
 
 const STATS: { value: CustomQuestStat; label: string }[] = [
   { value: 'strength', label: 'STR' },
@@ -34,31 +35,53 @@ export default function CustomQuestForm({
     editing?.targetCount != null ? String(editing.targetCount) : ''
   );
   const [recurring, setRecurring] = useState(Boolean(editing?.recurring));
+  const [error, setError] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = title.trim();
-    if (trimmed.length < 2) return;
+    setError(null);
+
+    const titleCheck = validateCustomQuestTitle(title);
+    if (!titleCheck.ok) {
+      setError(titleCheck.message);
+      return;
+    }
+
+    const exp = Number(expReward);
+    if (
+      !Number.isFinite(exp) ||
+      exp < LIMITS.customQuestExpMin ||
+      exp > LIMITS.customQuestExpMax
+    ) {
+      setError(`EXP must be between ${LIMITS.customQuestExpMin} and ${LIMITS.customQuestExpMax}`);
+      return;
+    }
+
+    let target: number | undefined;
+    if (targetCount.trim()) {
+      const t = Number(targetCount);
+      if (!Number.isFinite(t) || t < 1 || t > LIMITS.customQuestTargetMax) {
+        setError(`Target must be between 1 and ${LIMITS.customQuestTargetMax.toLocaleString()}`);
+        return;
+      }
+      target = Math.floor(t);
+    }
+
+    const payload = {
+      title: titleCheck.title,
+      expReward: Math.max(LIMITS.customQuestExpMin, Math.min(LIMITS.customQuestExpMax, Math.round(exp))),
+      statModifier,
+      targetCount: target,
+      recurring,
+    };
 
     if (editing) {
-      const updated = updateCustomQuest(editing.id, {
-        title: trimmed,
-        expReward: Math.max(1, Math.min(100, expReward)),
-        statModifier,
-        targetCount: targetCount ? Math.max(1, Number(targetCount)) : undefined,
-        recurring,
-      });
+      const updated = updateCustomQuest(editing.id, payload);
       if (updated) onUpdated?.(updated);
       return;
     }
 
-    const quest = addCustomQuest({
-      title: trimmed,
-      expReward: Math.max(1, Math.min(100, expReward)),
-      statModifier,
-      targetCount: targetCount ? Math.max(1, Number(targetCount)) : undefined,
-      recurring,
-    });
+    const quest = addCustomQuest(payload);
     onCreated(quest);
   };
 
@@ -77,8 +100,9 @@ export default function CustomQuestForm({
       </p>
       <input
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => setTitle(e.target.value.slice(0, LIMITS.customQuestTitleMax))}
         placeholder="Quest title"
+        maxLength={LIMITS.customQuestTitleMax}
         className="w-full text-sm bg-slate-950/70 border border-cyan-500/25 rounded px-2.5 py-2 text-white focus:outline-none focus:border-cyan-400/50"
         autoFocus
       />
@@ -87,8 +111,8 @@ export default function CustomQuestForm({
           EXP
           <input
             type="number"
-            min={1}
-            max={100}
+            min={LIMITS.customQuestExpMin}
+            max={LIMITS.customQuestExpMax}
             value={expReward}
             onChange={(e) => setExpReward(Number(e.target.value))}
             className="quest-log-input w-14 text-center"
@@ -113,6 +137,7 @@ export default function CustomQuestForm({
           <input
             type="number"
             min={1}
+            max={LIMITS.customQuestTargetMax}
             value={targetCount}
             onChange={(e) => setTargetCount(e.target.value)}
             placeholder="opt"
@@ -129,11 +154,16 @@ export default function CustomQuestForm({
         />
         Make recurring (shows every day)
       </label>
+      {error && <p className="text-[12px] text-amber-300">{error}</p>}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onCancel} className="journal-action-btn journal-action-btn-muted">
           Cancel
         </button>
-        <button type="submit" disabled={title.trim().length < 2} className="journal-action-btn">
+        <button
+          type="submit"
+          disabled={title.trim().length < LIMITS.customQuestTitleMin}
+          className="journal-action-btn"
+        >
           {editing ? 'Save' : 'Add Quest'}
         </button>
       </div>

@@ -4,6 +4,8 @@ const SENSITIVE_KEYS = new Set([
   'journal',
   'journalEntry',
   'journals',
+  'plaintext',
+  'ciphertext',
   'password',
   'token',
   'authorization',

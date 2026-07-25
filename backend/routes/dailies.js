@@ -346,9 +346,12 @@ router.post('/workout/:workoutId/exercise/:exerciseId/steps', async (req, res) =
     const user = await getPlayer();
     assertDayNotFrozen(user);
 
-    const delta = Number(req.body?.delta);
-    if (!Number.isFinite(delta) || delta === 0) {
-      return res.status(400).json({ message: 'delta must be a non-zero number' });
+    const { validateStepDelta } = require('../utils/validateInput');
+    let delta;
+    try {
+      delta = validateStepDelta(req.body?.delta);
+    } catch (e) {
+      return res.status(e.statusCode || 400).json({ message: e.message });
     }
 
     const workout = await Workout.findById(req.params.workoutId);
@@ -453,10 +456,12 @@ router.patch('/log-value/:id', async (req, res) => {
       return res.status(400).json({ message: 'Task does not support log values' });
     }
 
-    const { value } = req.body;
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed < 0) {
-      return res.status(400).json({ message: 'Invalid log value' });
+    const { validateLogValue } = require('../utils/validateInput');
+    let parsed;
+    try {
+      parsed = validateLogValue(task.lifetimeMetric, req.body?.value);
+    } catch (e) {
+      return res.status(e.statusCode || 400).json({ message: e.message });
     }
 
     const oldValue = task.logValue ?? task.defaultLogValue ?? 1;

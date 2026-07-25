@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "sync-workouts": "node scripts/syncWorkouts.js",
+    "encrypt-journals": "node scripts/encrypt-journals.js",
     "test": "jest --testPathPattern=utils"
   },
   "dependencies": {

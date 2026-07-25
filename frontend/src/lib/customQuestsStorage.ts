@@ -80,6 +80,12 @@ export function addCustomQuest(
 ): CustomQuest {
   const quest: CustomQuest = {
     ...input,
+    title: String(input.title || '').trim().slice(0, 120),
+    expReward: Math.max(1, Math.min(100, Number(input.expReward) || 1)),
+    targetCount:
+      input.targetCount == null || Number.isNaN(Number(input.targetCount))
+        ? undefined
+        : Math.max(1, Math.min(10_000, Number(input.targetCount))),
     recurring: Boolean(input.recurring),
     id: `cq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     createdAt: new Date().toISOString(),
@@ -127,7 +133,7 @@ export function updateCustomQuest(
       next.targetCount =
         patch.targetCount == null || Number.isNaN(Number(patch.targetCount))
           ? undefined
-          : Math.max(1, Number(patch.targetCount));
+          : Math.max(1, Math.min(10_000, Number(patch.targetCount)));
     }
     if (patch.recurring !== undefined) {
       next.recurring = Boolean(patch.recurring);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getJournalPromptForDate } from '@/lib/journalPrompts';
 import { getTodayKey } from '@/lib/journalStorage';
+import { LIMITS } from '@/lib/inputValidation';
 
 interface JournalPanelProps {
   journalEntry: string;
@@ -65,9 +66,10 @@ export default function JournalPanel({
   }, [draft, expanded, isEditing]);
 
   const charCount = draft.trim().length;
-  const canSave = charCount >= 10;
+  const canSave = charCount >= LIMITS.journalMinChars && charCount <= LIMITS.journalMaxChars;
   const isDirty = draft !== journalEntry;
-  const hasSavedEntry = journalEntry.trim().length >= 10;
+  const hasSavedEntry = journalEntry.trim().length >= LIMITS.journalMinChars;
+  const overMax = charCount > LIMITS.journalMaxChars;
   const prompt = getJournalPromptForDate(dateKey || getTodayKey());
   const journalPrompt = showingHistorical
     ? `Journal for ${viewDateLabel}: ${prompt}`
@@ -135,8 +137,9 @@ export default function JournalPanel({
         <textarea
           ref={textareaRef}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => setDraft(e.target.value.slice(0, LIMITS.journalMaxChars + 50))}
           readOnly={!isEditing}
+          maxLength={LIMITS.journalMaxChars + 50}
           placeholder={journalPrompt}
           className={`journal-textarea mt-2 ${!isEditing ? 'opacity-90 cursor-default' : ''}`}
           rows={4}
@@ -148,12 +151,16 @@ export default function JournalPanel({
           <span className="text-meta">
             {questCompleted
               ? '✓ Journal quest completed'
-              : canSave
-                ? isDirty
-                  ? 'Unsaved changes'
-                  : '✓ Ready to save'
-                : 'Minimum 10 characters'}
-            <span className="font-mono-data ml-2">{charCount}</span>
+              : overMax
+                ? `Too long — max ${LIMITS.journalMaxChars.toLocaleString()} characters`
+                : canSave
+                  ? isDirty
+                    ? 'Unsaved changes'
+                    : '✓ Ready to save'
+                  : `Minimum ${LIMITS.journalMinChars} characters`}
+            <span className={`font-mono-data ml-2 ${overMax ? 'text-amber-400' : ''}`}>
+              {charCount}/{LIMITS.journalMaxChars}
+            </span>
           </span>
 
           <div className="flex gap-2">

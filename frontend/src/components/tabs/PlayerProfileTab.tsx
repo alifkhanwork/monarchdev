@@ -13,6 +13,7 @@ import LifetimeStatsSection from '@/components/profile/LifetimeStatsSection';
 import TrainingProgressSection from '@/components/profile/TrainingProgressSection';
 import RewardShopSection from '@/components/profile/RewardShopSection';
 import InsightsSection from '@/components/profile/InsightsSection';
+import DiaryBrowseSection from '@/components/profile/DiaryBrowseSection';
 import JournalPanel from '@/components/tabs/JournalPanel';
 import SectionErrorBoundary from '@/components/ui/SectionErrorBoundary';
 import { exportHunterBackup } from '@/lib/exportBackup';
@@ -22,11 +23,13 @@ import {
 } from '@/lib/progressSnapshot';
 import { DEFAULT_ACCENT_HEX, THEME_ACCENTS } from '@/lib/themeAccent';
 import {
+  fetchJournalForDate,
   formatJournalDateLabel,
   getTodayKey,
-  loadJournalForDate,
   saveJournalForDate,
+  syncLocalJournalsToServer,
 } from '@/lib/journalStorage';
+import { validateJournalClient } from '@/lib/inputValidation';
 import type { WeightUnit } from '@/lib/weightUnits';
 
 interface PlayerProfileTabProps {
@@ -42,7 +45,7 @@ interface PlayerProfileTabProps {
 }
 
 type ChartPanel = 'performance' | 'attributes';
-type ProfileSubTab = 'overview' | 'records';
+type ProfileSubTab = 'overview' | 'diary' | 'records';
 
 const PROFILE_SUBTAB_KEY = 'the-system-profile-subtab';
 
@@ -50,7 +53,8 @@ function loadProfileSubTab(): ProfileSubTab {
   if (typeof window === 'undefined') return 'overview';
   try {
     const raw = sessionStorage.getItem(PROFILE_SUBTAB_KEY);
-    return raw === 'records' ? 'records' : 'overview';
+    if (raw === 'records' || raw === 'diary') return raw;
+    return 'overview';
   } catch {
     return 'overview';
   }
@@ -75,21 +79,35 @@ export default function PlayerProfileTab({
 }: PlayerProfileTabProps) {
   const [selectedDate, setSelectedDate] = useState(getTodayKey);
   const [journalEntry, setJournalEntry] = useState('');
+  const [journalSaving, setJournalSaving] = useState(false);
   const [activePanel, setActivePanel] = useState<ChartPanel>('performance');
   const [subTab, setSubTab] = useState<ProfileSubTab>('overview');
   const [exportingImage, setExportingImage] = useState(false);
 
   useEffect(() => {
     setSubTab(loadProfileSubTab());
+    void syncLocalJournalsToServer();
   }, []);
 
   useEffect(() => {
-    setJournalEntry(loadJournalForDate(selectedDate));
+    let cancelled = false;
+    (async () => {
+      const text = await fetchJournalForDate(selectedDate);
+      if (!cancelled) setJournalEntry(text);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDate]);
 
   const selectSubTab = (next: ProfileSubTab) => {
     setSubTab(next);
     saveProfileSubTab(next);
+  };
+
+  const openDiaryDate = (dateKey: string) => {
+    setSelectedDate(dateKey);
+    selectSubTab('overview');
   };
 
   const handleExportImage = async () => {
@@ -117,26 +135,33 @@ export default function PlayerProfileTab({
   };
 
   const handleJournalSave = async (text: string) => {
-    const trimmed = text.trim();
-    if (trimmed.length < 10) {
-      alert('Journal must be at least 10 characters.');
+    const check = validateJournalClient(text);
+    if (!check.ok) {
+      alert(check.message);
       return;
     }
-    saveJournalForDate(selectedDate, trimmed);
-    setJournalEntry(trimmed);
+    setJournalSaving(true);
+    try {
+      await saveJournalForDate(selectedDate, check.text);
+      setJournalEntry(check.text);
 
-    if (selectedDate === getTodayKey()) {
-      try {
-        const dailies = await api.getDailies();
-        const journalTask = dailies.tasks.find((t) =>
-          t.taskName.toLowerCase().includes('journal')
-        );
-        if (journalTask && !journalTask.isCompleted && !dailies.dayStatus.isFrozen) {
-          await api.completeTask(journalTask._id);
+      if (selectedDate === getTodayKey()) {
+        try {
+          const dailies = await api.getDailies();
+          const journalTask = dailies.tasks.find((t) =>
+            t.taskName.toLowerCase().includes('journal')
+          );
+          if (journalTask && !journalTask.isCompleted && !dailies.dayStatus.isFrozen) {
+            await api.completeTask(journalTask._id);
+          }
+        } catch {
+          // best-effort
         }
-      } catch {
-        // best-effort
       }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to save journal');
+    } finally {
+      setJournalSaving(false);
     }
   };
 
@@ -254,6 +279,7 @@ export default function PlayerProfileTab({
           {(
             [
               { id: 'overview' as const, label: 'Overview' },
+              { id: 'diary' as const, label: 'Diary' },
               { id: 'records' as const, label: 'Records & Progress' },
             ] as const
           ).map((tab) => (
@@ -274,7 +300,9 @@ export default function PlayerProfileTab({
         <p className="text-meta">
           {subTab === 'overview'
             ? 'Stats, gear, streak & journal'
-            : 'Shop, PRs, milestones & training log'}
+            : subTab === 'diary'
+              ? 'Browsable journal history'
+              : 'Shop, PRs, milestones & training log'}
         </p>
       </div>
 
@@ -362,8 +390,13 @@ export default function PlayerProfileTab({
             viewDateLabel={formatJournalDateLabel(selectedDate)}
             dateKey={selectedDate}
             isToday={selectedDate === getTodayKey()}
+            isSaving={journalSaving}
           />
         </div>
+      ) : subTab === 'diary' ? (
+        <SectionErrorBoundary label="Hunter Diary">
+          <DiaryBrowseSection onOpenDate={openDiaryDate} />
+        </SectionErrorBoundary>
       ) : (
         <div className="space-y-2.5">
           <RewardShopSection onPurchased={onShopPurchased} onThemeEquipped={onThemeEquipped} />

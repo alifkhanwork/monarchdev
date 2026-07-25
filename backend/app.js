@@ -17,6 +17,7 @@ const monthlyRoutes = require('./routes/monthly');
 const progressRoutes = require('./routes/progress');
 const shopRoutes = require('./routes/shop');
 const cronRoutes = require('./routes/cron');
+const journalRoutes = require('./routes/journals');
 const { initSentry, Sentry } = require('./utils/sentry');
 
 const sentryEnabled = initSentry();
@@ -96,6 +97,7 @@ app.use('/api/monthly', monthlyRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/journals', journalRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

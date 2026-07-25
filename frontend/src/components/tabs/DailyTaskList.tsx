@@ -70,14 +70,27 @@ function QuestLogStepper({
   onCommit: (taskId: string, value: number) => void;
 }) {
   const step = task.logUnit === 'hr' ? 0.25 : 1;
+  const max =
+    task.lifetimeMetric === 'water_liters'
+      ? 20
+      : task.lifetimeMetric === 'study_hours'
+        ? 16
+        : task.lifetimeMetric === 'distance_km'
+          ? 200
+          : task.lifetimeMetric === 'steps'
+            ? 100_000
+            : 10_000;
 
   const bump = (dir: 1 | -1) => {
-    const next = Math.max(0, Math.round((task.logValue + dir * step) * 100) / 100);
+    const next = Math.max(
+      0,
+      Math.min(max, Math.round((task.logValue + dir * step) * 100) / 100)
+    );
     if (next !== task.logValue) onCommit(task._id, next);
   };
 
   return (
-    <div className="stepper-chip" title={`Log ${task.logUnit}`}>
+    <div className="stepper-chip" title={`Log ${task.logUnit} (max ${max})`}>
       <button
         type="button"
         className="stepper-btn"
@@ -97,10 +110,10 @@ function QuestLogStepper({
       <button
         type="button"
         className="stepper-btn"
-        disabled={disabled}
+        disabled={disabled || task.logValue >= max}
         onClick={(e) => {
           e.stopPropagation();
-          bump(1);
+          bump(+1);
         }}
         aria-label={`Increase ${task.logUnit}`}
       >

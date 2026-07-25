@@ -203,4 +203,37 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ accent }),
     }),
+
+  getJournal: (dateKey: string) =>
+    fetchAPI<{ dateKey: string; text: string; updatedAt: string | null; encrypted: boolean }>(
+      `/api/journals/${dateKey}`
+    ),
+
+  saveJournal: (dateKey: string, text: string) =>
+    fetchAPI<{ dateKey: string; text: string; updatedAt: string | null; encrypted: boolean }>(
+      `/api/journals/${dateKey}`,
+      { method: 'PUT', body: JSON.stringify({ text }) }
+    ),
+
+  listJournals: (params?: { limit?: number; before?: string; month?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.before) q.set('before', params.before);
+    if (params?.month) q.set('month', params.month);
+    const qs = q.toString();
+    return fetchAPI<{
+      entries: { dateKey: string; text: string; updatedAt?: string }[];
+      hasMore: boolean;
+      nextBefore: string | null;
+      limit: number;
+    }>(`/api/journals${qs ? `?${qs}` : ''}`);
+  },
+
+  listJournalMonths: () => fetchAPI<{ months: string[] }>('/api/journals/months'),
+
+  syncLocalJournals: (entries: Record<string, string>) =>
+    fetchAPI<{ imported: number; skipped: number; invalid: number }>('/api/journals/sync-local', {
+      method: 'POST',
+      body: JSON.stringify({ entries }),
+    }),
 };

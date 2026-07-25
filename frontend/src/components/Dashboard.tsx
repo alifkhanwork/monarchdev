@@ -28,11 +28,14 @@ import SectionErrorBoundary from '@/components/ui/SectionErrorBoundary';
 import { DAY_CLEARED_FLAVOR, pickFlavor, QUEST_CLEARED_FLAVOR } from '@/lib/systemFlavor';
 import { toggleCustomQuestCompleted, type CustomQuest } from '@/lib/customQuestsStorage';
 import {
+  fetchJournalForDate,
   getTodayKey,
   loadJournalForDate,
   migrateLegacyJournal,
   saveJournalForDate,
+  syncLocalJournalsToServer,
 } from '@/lib/journalStorage';
+import { clampLogValue, validateJournalClient } from '@/lib/inputValidation';
 import { applyThemeAccent } from '@/lib/themeAccent';
 import { hasSeenOnboarding } from '@/lib/onboardingStorage';
 
@@ -108,6 +111,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     setJournalEntry(loadTodayJournal());
+    void syncLocalJournalsToServer().then(async () => {
+      const text = await fetchJournalForDate(getTodayKey());
+      setJournalEntry(text);
+    });
     fetchAll();
   }, [fetchAll]);
 
@@ -117,7 +124,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (activeTab === 'daily') {
-      setJournalEntry(loadJournalForDate(getTodayKey()));
+      void fetchJournalForDate(getTodayKey()).then(setJournalEntry);
     }
   }, [activeTab]);
 
@@ -184,16 +191,16 @@ export default function Dashboard() {
   };
 
   const handleJournalSave = async (text: string) => {
-    const trimmed = text.trim();
-    if (trimmed.length < 10) {
-      alert('Journal must be at least 10 characters.');
+    const check = validateJournalClient(text);
+    if (!check.ok) {
+      alert(check.message);
       return;
     }
 
     setJournalSaving(true);
     try {
-      saveJournalForDate(getTodayKey(), trimmed);
-      setJournalEntry(trimmed);
+      await saveJournalForDate(getTodayKey(), check.text);
+      setJournalEntry(check.text);
 
       if (dailies && !dailies.dayStatus.isFrozen && journalTask && !journalTask.isCompleted) {
         setCompletingId(journalTask._id);
@@ -304,8 +311,14 @@ export default function Dashboard() {
   };
 
   const handleLogValueChange = async (taskId: string, value: number) => {
+    const task = dailies?.tasks.find((t) => t._id === taskId);
+    const check = clampLogValue(task?.lifetimeMetric, value);
+    if (!check.ok) {
+      alert(check.message);
+      return;
+    }
     try {
-      const result = await api.updateTaskLogValue(taskId, value);
+      const result = await api.updateTaskLogValue(taskId, check.value);
       setDailies((prev) => {
         if (!prev) return prev;
         const updateTask = (t: (typeof prev.tasks)[0]) =>

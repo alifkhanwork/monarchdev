@@ -3,18 +3,8 @@ import {
   loadAllCustomQuests,
   loadRecurringCustomQuests,
 } from './customQuestsStorage';
-import { getTodayKey } from './journalStorage';
+import { getTodayKey, peekAllLocalJournals } from './journalStorage';
 import type { User } from '@/types';
-
-const JOURNALS_KEY = 'the-system-journals';
-
-function readJournals(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(JOURNALS_KEY) || '{}') as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
 
 /** Download a JSON backup of local + server-known hunter data. */
 export function exportHunterBackup(user: User) {
@@ -36,7 +26,7 @@ export function exportHunterBackup(user: User) {
       availableTitles: user.availableTitles,
       settings: user.settings,
     },
-    journals: readJournals(),
+    journals: peekAllLocalJournals(),
     customQuests: loadAllCustomQuests(),
     customQuestRecurring: loadRecurringCustomQuests(),
     customQuestCompletions: loadAllCustomCompletions(),

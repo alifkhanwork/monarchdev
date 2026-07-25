@@ -50,7 +50,13 @@ router.get('/', async (req, res) => {
 
 router.post('/:id/progress', async (req, res) => {
   try {
-    const { delta = 1 } = req.body;
+    const { validateGrindDelta } = require('../utils/validateInput');
+    let delta;
+    try {
+      delta = validateGrindDelta(req.body?.delta ?? 1);
+    } catch (e) {
+      return res.status(e.statusCode || 400).json({ message: e.message });
+    }
     await ensurePeriod();
     const quest = await MonthlyGrind.findById(req.params.id);
     if (!quest) return res.status(404).json({ message: 'Quest not found' });

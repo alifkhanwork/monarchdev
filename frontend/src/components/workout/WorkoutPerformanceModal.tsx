@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Exercise, Workout } from '@/types';
 import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
+import { LIMITS } from '@/lib/inputValidation';
 
 export interface LoggedSet {
   setNumber: number;
@@ -90,12 +91,27 @@ export default function WorkoutPerformanceModal({
   const setRep = (exId: string, idx: number, value: number) => {
     setReps((prev) => {
       const copy = [...(prev[exId] || [])];
-      copy[idx] = Math.max(0, value);
+      const n = Number.isFinite(value) ? value : 0;
+      copy[idx] = Math.max(LIMITS.repsMin, Math.min(LIMITS.repsMax, Math.round(n)));
       return { ...prev, [exId]: copy };
     });
   };
 
   const handleSubmit = async () => {
+    if (durationMin.trim()) {
+      const d = Number(durationMin);
+      if (
+        !Number.isFinite(d) ||
+        d < LIMITS.workoutDurationMin ||
+        d > LIMITS.workoutDurationMax
+      ) {
+        alert(
+          `Duration must be between ${LIMITS.workoutDurationMin} and ${LIMITS.workoutDurationMax} minutes`
+        );
+        return;
+      }
+    }
+
     const exercises: LoggedExercisePayload[] = loggable.map((ex) => ({
       exerciseName: ex.name,
       weightKg: weights[ex._id] ?? null,
@@ -103,7 +119,7 @@ export default function WorkoutPerformanceModal({
       targetRepRange: ex.repRange,
       sets: (reps[ex._id] || []).map((rep, i) => ({
         setNumber: i + 1,
-        reps: rep,
+        reps: Math.max(LIMITS.repsMin, Math.min(LIMITS.repsMax, rep)),
         weightKg: weights[ex._id] ?? null,
       })),
     }));
@@ -144,7 +160,8 @@ export default function WorkoutPerformanceModal({
           Session duration (min, optional)
           <input
             type="number"
-            min={1}
+            min={LIMITS.workoutDurationMin}
+            max={LIMITS.workoutDurationMax}
             value={durationMin}
             onChange={(e) => setDurationMin(e.target.value)}
             className="mt-1 w-full bg-slate-950/70 border border-cyan-500/25 rounded px-2.5 py-1.5 text-sm text-slate-200"
@@ -184,7 +201,8 @@ export default function WorkoutPerformanceModal({
                     Set {idx + 1}
                     <input
                       type="number"
-                      min={0}
+                      min={LIMITS.repsMin}
+                      max={LIMITS.repsMax}
                       value={rep}
                       onChange={(e) => setRep(ex._id, idx, Number(e.target.value))}
                       className="mt-0.5 w-full bg-slate-950/70 border border-cyan-500/20 rounded px-1.5 py-1 text-sm text-center text-white font-mono-data"

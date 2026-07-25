@@ -97,9 +97,12 @@ export default function TrainingProgressSection({ onGoTrain }: TrainingProgressS
         <p className="panel-label mb-2">Training History</p>
         {history.length === 0 ? (
           <div className="text-center py-6 space-y-3">
-            <p className="text-sm text-slate-300">Log your first set to start tracking PRs</p>
+            <p className="text-sm text-slate-300">
+              No logged sessions yet — complete a workout and submit your set reps to see history
+              here.
+            </p>
             <p className="text-meta">
-              Finish today&apos;s workout and submit set reps — history builds here.
+              History builds from the Daily Grind performance log, not from checkbox clears alone.
             </p>
             {onGoTrain && (
               <button type="button" className="journal-action-btn" onClick={onGoTrain}>

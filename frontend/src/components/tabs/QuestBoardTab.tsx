@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Milestone } from '@/types';
 import MilestoneCard from '@/components/milestones/MilestoneCard';
+import CollapsibleCategoryHeader from '@/components/quests/CollapsibleCategoryHeader';
+import { useCollapsibleSections } from '@/hooks/useCollapsibleSections';
 import { isMilestoneOverdue } from '@/lib/questBoardHelpers';
 
 const MAIN_QUEST_CATEGORY = 'Level 20 Main Quest';
+const GEAR_SECTION = 'SSR Gear Quests';
+const COLLAPSE_KEY = 'the-system-quest-board-collapse';
 
 type SortMode = 'default' | 'due' | 'exp' | 'progress';
 
@@ -53,7 +57,6 @@ export default function QuestBoardTab({
 }: QuestBoardTabProps) {
   const [viewingAge, setViewingAge] = useState(currentAge);
   const [ageDraft, setAgeDraft] = useState(String(currentAge));
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [search, setSearch] = useState('');
   const [hideClearedCategories, setHideClearedCategories] = useState(true);
@@ -112,6 +115,20 @@ export default function QuestBoardTab({
     });
   }, [mainQuests, hideClearedCategories]);
 
+  const sectionIds = useMemo(() => {
+    const ids = grouped.map(([g]) => g);
+    if (gearQuests.length > 0) ids.push(GEAR_SECTION);
+    return ids;
+  }, [grouped, gearQuests.length]);
+
+  // All categories collapsed by default (null = no auto-open).
+  // sectionIds must be stable once milestones load so the hook can hydrate.
+  const { isCollapsed, toggle } = useCollapsibleSections(
+    COLLAPSE_KEY,
+    sectionIds,
+    null
+  );
+
   const commitAge = () => {
     const parsed = parseInt(ageDraft, 10);
     if (!Number.isNaN(parsed) && parsed >= 10 && parsed <= 120 && parsed !== currentAge) {
@@ -121,9 +138,6 @@ export default function QuestBoardTab({
       setAgeDraft(String(currentAge));
     }
   };
-
-  const toggleGroup = (key: string) =>
-    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const showSearch = milestones.length >= 8;
 
@@ -216,25 +230,19 @@ export default function QuestBoardTab({
       </div>
 
       {grouped.map(([group, quests]) => {
-        const isCollapsed = collapsed[group];
-        const allCleared = quests.every((q) => q.isCompleted);
+        const done = quests.filter((q) => q.isCompleted).length;
+        const collapsed = isCollapsed(group);
         return (
           <section key={group} className="space-y-1.5">
-            <button
-              type="button"
-              onClick={() => toggleGroup(group)}
-              className="category-sticky w-full justify-between pr-1"
-            >
-              <span className="flex items-center gap-1.5">
-                <span>★</span> {group}
-                <span className="text-slate-400 font-mono-data normal-case tracking-normal">
-                  ({quests.filter((q) => q.isCompleted).length}/{quests.length})
-                  {allCleared ? ' · cleared' : ''}
-                </span>
-              </span>
-              <span>{isCollapsed ? '▶' : '▼'}</span>
-            </button>
-            {!isCollapsed && (
+            <CollapsibleCategoryHeader
+              title={group}
+              icon="★"
+              done={done}
+              total={quests.length}
+              collapsed={collapsed}
+              onToggle={() => toggle(group)}
+            />
+            {!collapsed && (
               <div className="space-y-1.5">
                 {quests.map((m) => (
                   <MilestoneCard key={m._id} milestone={m} onToggleSubtask={onToggleSubtask} />
@@ -257,14 +265,21 @@ export default function QuestBoardTab({
 
       {gearQuests.length > 0 && (
         <section className="space-y-1.5">
-          <h2 className="category-sticky">
-            <span>⚔</span> SSR Gear Quests
-          </h2>
-          <div className="space-y-1.5">
-            {gearQuests.map((m) => (
-              <MilestoneCard key={m._id} milestone={m} onToggleSubtask={onToggleSubtask} />
-            ))}
-          </div>
+          <CollapsibleCategoryHeader
+            title={GEAR_SECTION}
+            icon="⚔"
+            done={gearQuests.filter((q) => q.isCompleted).length}
+            total={gearQuests.length}
+            collapsed={isCollapsed(GEAR_SECTION)}
+            onToggle={() => toggle(GEAR_SECTION)}
+          />
+          {!isCollapsed(GEAR_SECTION) && (
+            <div className="space-y-1.5">
+              {gearQuests.map((m) => (
+                <MilestoneCard key={m._id} milestone={m} onToggleSubtask={onToggleSubtask} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

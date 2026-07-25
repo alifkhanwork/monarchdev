@@ -6,6 +6,8 @@ interface LifetimeStatsSectionProps {
   lifetimeStats: LifetimeStats;
   weeklyProgress?: WeeklyProgress;
   onGoTrain?: () => void;
+  /** Which blocks to render. Default = all (backward compatible). */
+  sections?: Array<'hunterProgress' | 'weeklyProgress' | 'personalRecords' | 'milestones'>;
 }
 
 const MAIN_STATS = [
@@ -98,6 +100,7 @@ export default function LifetimeStatsSection({
   lifetimeStats,
   weeklyProgress,
   onGoTrain,
+  sections = ['hunterProgress', 'weeklyProgress', 'personalRecords', 'milestones'],
 }: LifetimeStatsSectionProps) {
   const weekly = weeklyProgress || {
     workoutsCompleted: 0,
@@ -108,16 +111,18 @@ export default function LifetimeStatsSection({
   };
 
   const hasAnyPr = PR_CARDS.some((pr) => lifetimeStats.personalRecords?.[pr.key] != null);
+  const show = (id: (typeof sections)[number]) => sections.includes(id);
 
   return (
     <div className="space-y-2.5">
+      {show('hunterProgress') && (
       <div className="glass-panel">
         <p className="panel-label mb-1">Hunter Progress</p>
         <p className="text-[10px] text-slate-400 mb-4">
           Lifetime totals from real training — consistency over perfection
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-stat-count={MAIN_STATS.length}>
           {MAIN_STATS.map((card) => {
             const value = lifetimeStats[card.key] ?? 0;
             return (
@@ -137,7 +142,9 @@ export default function LifetimeStatsSection({
           })}
         </div>
       </div>
+      )}
 
+      {show('weeklyProgress') && (
       <div className="glass-panel">
         <p className="panel-label mb-1">Weekly Progress</p>
         <p className="text-[10px] text-slate-400 mb-3">Current week · Mon–Sun</p>
@@ -166,7 +173,9 @@ export default function LifetimeStatsSection({
           </div>
         </div>
       </div>
+      )}
 
+      {show('personalRecords') && (
       <div className="glass-panel">
         <p className="panel-label mb-1">Personal Records</p>
         {!hasAnyPr ? (
@@ -202,7 +211,9 @@ export default function LifetimeStatsSection({
           </>
         )}
       </div>
+      )}
 
+      {show('milestones') && (
       <div className="glass-panel">
         <p className="panel-label mb-3">Milestones</p>
         <div className="space-y-4">
@@ -223,6 +234,7 @@ export default function LifetimeStatsSection({
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }

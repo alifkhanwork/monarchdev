@@ -1,7 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { DailyTask, DayStatusInfo, GroupedTasks, Workout } from '@/types';
 import DayStatusSelect from './DayStatusSelect';
+import CollapsibleCategoryHeader from '@/components/quests/CollapsibleCategoryHeader';
+import { useCollapsibleSections } from '@/hooks/useCollapsibleSections';
 
 interface DailyTaskListProps {
   groupedTasks: GroupedTasks[];
@@ -45,6 +48,7 @@ const DAY_TYPE_LABELS: Record<string, string> = {
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 const STEP_DELTAS = [500, 1000, 2500];
+const COLLAPSE_KEY = 'the-system-daily-collapse';
 
 const STAT_SHORT: Record<string, string> = {
   strength: 'STR',
@@ -160,10 +164,14 @@ export default function DailyTaskList({
   );
   const totalCount = groupedTasks.reduce((sum, g) => sum + g.tasks.length, 0);
 
-  const visibleGroupedTasks = groupedTasks.map((group) => ({
-    ...group,
-    tasks: group.tasks.filter((t) => t.taskName !== WORKOUT_DAILY_TASK_NAME),
-  }));
+  const visibleGroupedTasks = useMemo(
+    () =>
+      groupedTasks.map((group) => ({
+        ...group,
+        tasks: group.tasks.filter((t) => t.taskName !== WORKOUT_DAILY_TASK_NAME),
+      })),
+    [groupedTasks]
+  );
 
   const workoutCompleted = workout?.exercises.every((ex) => ex.completed) ?? false;
   const workoutDoneCount = workout?.exercises.filter((ex) => ex.completed).length ?? 0;
@@ -172,13 +180,52 @@ export default function DailyTaskList({
     workout?.completionPercent ??
     (workoutTotal ? Math.round((workoutDoneCount / workoutTotal) * 100) : 0);
 
+  const sectionIds = useMemo(() => {
+    const ids = visibleGroupedTasks.filter((g) => g.tasks.length > 0).map((g) => g.category);
+    if (workout) ids.push('Workout');
+    return ids;
+  }, [visibleGroupedTasks, workout]);
+
+  const defaultOpenId = useMemo(() => {
+    let bestId: string | null = null;
+    let bestIncomplete = -1;
+
+    for (const group of visibleGroupedTasks) {
+      if (group.tasks.length === 0) continue;
+      const incomplete = group.tasks.filter((t) => !t.isCompleted).length;
+      if (incomplete > bestIncomplete) {
+        bestIncomplete = incomplete;
+        bestId = group.category;
+      }
+    }
+
+    if (workout && workoutTotal > 0) {
+      const incomplete = workoutTotal - workoutDoneCount;
+      if (incomplete > bestIncomplete) {
+        bestId = 'Workout';
+      }
+    }
+
+    return bestId;
+  }, [visibleGroupedTasks, workout, workoutTotal, workoutDoneCount]);
+
+  const { isCollapsed, toggle } = useCollapsibleSections(
+    COLLAPSE_KEY,
+    sectionIds,
+    defaultOpenId
+  );
+
   return (
     <div className={`glass-panel flex flex-col overflow-hidden !p-3 ${isFrozen ? 'opacity-90' : ''}`}>
       <div className="panel-header !pb-2 flex-wrap gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="panel-label">Daily Quests</span>
           <span className="text-meta truncate hidden sm:inline">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            })}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -200,165 +247,251 @@ export default function DailyTaskList({
           isFrozen ? 'pointer-events-none select-none opacity-50' : ''
         }`}
       >
-        {visibleGroupedTasks.map((group) => (
-          <section key={group.category}>
-            <h3 className="category-sticky">
-              <span>{CATEGORY_ICONS[group.category] ?? '◇'}</span>
-              {group.category}
-            </h3>
-            <ul className="space-y-1.5">
-              {group.tasks.map((task) => {
-                const hasLog = task.lifetimeMetric && task.lifetimeMetric !== 'none';
-                return (
-                  <li key={task._id}>
-                    <div
-                      className={`quest-item w-full ${task.isCompleted ? 'quest-item-done' : ''} ${
-                        flashingId === task._id ? 'quest-item-flash' : ''
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleTaskClick(task)}
-                        disabled={isFrozen || completingId === task._id}
-                        className="quest-hit -ml-1"
-                        aria-pressed={task.isCompleted}
-                        aria-label={task.taskName}
-                      >
-                        <span
-                          className={`quest-checkbox ${task.isCompleted ? 'quest-checkbox-done' : ''}`}
-                        >
-                          {task.isCompleted && '✓'}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTaskClick(task)}
-                        disabled={isFrozen || completingId === task._id}
-                        className="flex-1 min-w-0 text-left flex items-center gap-2"
-                      >
-                        <span
-                          className={`text-[13px] sm:text-sm truncate ${
-                            task.isCompleted ? 'line-through text-slate-500' : 'text-white'
+        {visibleGroupedTasks.map((group) => {
+          if (group.tasks.length === 0) return null;
+          const done = group.tasks.filter((t) => t.isCompleted).length;
+          const collapsed = isCollapsed(group.category);
+          return (
+            <section key={group.category}>
+              <CollapsibleCategoryHeader
+                title={group.category}
+                icon={CATEGORY_ICONS[group.category] ?? '◇'}
+                done={done}
+                total={group.tasks.length}
+                collapsed={collapsed}
+                onToggle={() => toggle(group.category)}
+              />
+              {!collapsed && (
+                <ul className="space-y-1.5 mt-1">
+                  {group.tasks.map((task) => {
+                    const hasLog = task.lifetimeMetric && task.lifetimeMetric !== 'none';
+                    return (
+                      <li key={task._id}>
+                        <div
+                          className={`quest-item w-full ${task.isCompleted ? 'quest-item-done' : ''} ${
+                            flashingId === task._id ? 'quest-item-flash' : ''
                           }`}
                         >
-                          {task.taskName}
-                        </span>
-                        <span className="quest-meta-pill hidden sm:inline">
-                          +{task.expReward} EXP · {formatStatRewards(task)}
-                        </span>
-                      </button>
-                      <span className="quest-meta-pill sm:hidden">+{task.expReward}</span>
-                      {hasLog && (
-                        <QuestLogStepper
-                          task={task}
-                          disabled={isFrozen}
-                          onCommit={onLogValueChange}
-                        />
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+                          <button
+                            type="button"
+                            onClick={() => handleTaskClick(task)}
+                            disabled={isFrozen || completingId === task._id}
+                            className="quest-hit -ml-1"
+                            aria-pressed={task.isCompleted}
+                            aria-label={task.taskName}
+                          >
+                            <span
+                              className={`quest-checkbox ${
+                                task.isCompleted ? 'quest-checkbox-done' : ''
+                              }`}
+                            >
+                              {task.isCompleted && '✓'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTaskClick(task)}
+                            disabled={isFrozen || completingId === task._id}
+                            className="flex-1 min-w-0 text-left flex items-center gap-2"
+                          >
+                            <span
+                              className={`text-[13px] sm:text-sm truncate ${
+                                task.isCompleted ? 'line-through text-slate-500' : 'text-white'
+                              }`}
+                            >
+                              {task.taskName}
+                            </span>
+                            <span className="quest-meta-pill hidden sm:inline">
+                              +{task.expReward} EXP · {formatStatRewards(task)}
+                            </span>
+                          </button>
+                          <span className="quest-meta-pill sm:hidden">+{task.expReward}</span>
+                          {hasLog && (
+                            <QuestLogStepper
+                              task={task}
+                              disabled={isFrozen}
+                              onCommit={onLogValueChange}
+                            />
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          );
+        })}
 
         {workout && (
           <section>
-            <div className="category-sticky flex-wrap gap-2">
-              <span className="flex items-center gap-1.5">
-                <span>⚔</span> Workout
-              </span>
-              <span className="normal-case px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-medium tracking-normal">
-                {DAY_TYPE_LABELS[dayType] || dayType}
-              </span>
-              <span className="text-slate-500 font-mono-data normal-case tracking-normal">
-                {workoutDoneCount}/{workoutTotal} · {completionPercent}%
-              </span>
-              {workoutQuest && (
-                <span className="text-amber-400/80 font-mono-data normal-case tracking-normal">
-                  +{workoutQuest.expReward} EXP
+            <CollapsibleCategoryHeader
+              title="Workout"
+              icon="⚔"
+              done={workoutDoneCount}
+              total={workoutTotal}
+              collapsed={isCollapsed('Workout')}
+              onToggle={() => toggle('Workout')}
+              badge={
+                <span className="normal-case px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-medium tracking-normal">
+                  {DAY_TYPE_LABELS[dayType] || dayType}
                 </span>
-              )}
-              {!isRecovery && (
-                <div className="ml-auto">
-                  {!workoutCompleted ? (
-                    <button
-                      type="button"
-                      disabled={isFrozen || workoutSyncing}
-                      onClick={() => onCompleteAllExercises(workout._id)}
-                      className="workout-bulk-btn"
-                    >
-                      Check All
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isFrozen || workoutSyncing}
-                      onClick={() => onClearAllExercises(workout._id)}
-                      className="workout-bulk-btn workout-bulk-btn-muted"
-                    >
-                      Clear All
-                    </button>
-                  )}
+              }
+              trailing={
+                !isRecovery ? (
+                  <span
+                    role="presentation"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    {!workoutCompleted ? (
+                      <button
+                        type="button"
+                        disabled={isFrozen || workoutSyncing}
+                        onClick={() => onCompleteAllExercises(workout._id)}
+                        className="workout-bulk-btn"
+                      >
+                        Check All
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isFrozen || workoutSyncing}
+                        onClick={() => onClearAllExercises(workout._id)}
+                        className="workout-bulk-btn workout-bulk-btn-muted"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </span>
+                ) : undefined
+              }
+            />
+
+            {!isCollapsed('Workout') && (
+              <div className="mt-1 space-y-1.5">
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${completionPercent}%` }} />
                 </div>
-              )}
-            </div>
 
-            <div className="mb-1.5 progress-track">
-              <div className="progress-fill" style={{ width: `${completionPercent}%` }} />
-            </div>
+                {workoutCompleted && workoutQuest && (
+                  <div className="px-2 py-1.5 rounded border border-emerald-500/30 bg-emerald-500/10 space-y-1.5">
+                    <p className="text-[11px] font-semibold text-emerald-400">
+                      ✓ Workout complete — +{workoutQuest.expReward} EXP
+                      {workoutQuest.statRewards?.length
+                        ? ` · ${formatStatRewards(workoutQuest)}`
+                        : ''}
+                    </p>
+                    {onLogPerformance && !isRecovery && (
+                      <button
+                        type="button"
+                        disabled={isFrozen || workoutSyncing}
+                        onClick={onLogPerformance}
+                        className="workout-bulk-btn w-full"
+                      >
+                        Log Sets & Get Coach Feedback
+                      </button>
+                    )}
+                  </div>
+                )}
 
-            {workoutCompleted && workoutQuest && (
-              <div className="mb-1.5 px-2 py-1.5 rounded border border-emerald-500/30 bg-emerald-500/10 space-y-1.5">
-                <p className="text-[11px] font-semibold text-emerald-400">
-                  ✓ Workout complete — +{workoutQuest.expReward} EXP
-                  {workoutQuest.statRewards?.length
-                    ? ` · ${formatStatRewards(workoutQuest)}`
-                    : ''}
-                </p>
-                {onLogPerformance && !isRecovery && (
+                {!workoutCompleted && onLogPerformance && !isRecovery && workoutDoneCount > 0 && (
                   <button
                     type="button"
                     disabled={isFrozen || workoutSyncing}
                     onClick={onLogPerformance}
-                    className="workout-bulk-btn w-full"
+                    className="workout-bulk-btn workout-bulk-btn-muted w-full"
                   >
-                    Log Sets & Get Coach Feedback
+                    Log Performance Early
                   </button>
                 )}
-              </div>
-            )}
 
-            {!workoutCompleted && onLogPerformance && !isRecovery && workoutDoneCount > 0 && (
-              <div className="mb-1.5">
-                <button
-                  type="button"
-                  disabled={isFrozen || workoutSyncing}
-                  onClick={onLogPerformance}
-                  className="workout-bulk-btn workout-bulk-btn-muted w-full"
-                >
-                  Log Performance Early
-                </button>
-              </div>
-            )}
+                <ul className="space-y-1.5">
+                  {workout.exercises.map((exercise) => {
+                    const isSteps = exercise.trackingType === 'steps';
+                    const steps = exercise.currentSteps ?? 0;
+                    const target = exercise.stepTarget ?? 10000;
 
-            <ul className="space-y-1.5">
-              {workout.exercises.map((exercise) => {
-                const isSteps = exercise.trackingType === 'steps';
-                const steps = exercise.currentSteps ?? 0;
-                const target = exercise.stepTarget ?? 10000;
+                    if (isSteps) {
+                      return (
+                        <li key={exercise._id}>
+                          <div
+                            className={`quest-item w-full flex-col !items-stretch !gap-2 ${
+                              exercise.completed ? 'quest-item-done' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span className="quest-hit -ml-1 pointer-events-none">
+                                <span
+                                  className={`quest-checkbox ${
+                                    exercise.completed ? 'quest-checkbox-done' : ''
+                                  }`}
+                                >
+                                  {exercise.completed && '✓'}
+                                </span>
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className={`text-[13px] sm:text-sm ${
+                                    exercise.completed
+                                      ? 'line-through text-slate-500'
+                                      : 'text-white'
+                                  }`}
+                                >
+                                  {exercise.name}
+                                </p>
+                                <p className="text-[11px] font-mono-data text-neon-teal mt-0.5">
+                                  {steps.toLocaleString()} / {target.toLocaleString()} Steps
+                                </p>
+                              </div>
+                            </div>
+                            <div className="progress-track">
+                              <div
+                                className="progress-fill"
+                                style={{
+                                  width: `${Math.min(100, Math.round((steps / target) * 100))}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {STEP_DELTAS.map((d) => (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  disabled={isFrozen || workoutSyncing || steps >= target}
+                                  onClick={() => onAddSteps?.(workout._id, exercise._id, d)}
+                                  className="workout-bulk-btn"
+                                >
+                                  +{d.toLocaleString()}
+                                </button>
+                              ))}
+                              {steps > 0 && (
+                                <button
+                                  type="button"
+                                  disabled={isFrozen || workoutSyncing}
+                                  onClick={() => onAddSteps?.(workout._id, exercise._id, -500)}
+                                  className="workout-bulk-btn workout-bulk-btn-muted"
+                                >
+                                  −500
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    }
 
-                if (isSteps) {
-                  return (
-                    <li key={exercise._id}>
-                      <div
-                        className={`quest-item w-full flex-col !items-stretch !gap-2 ${
-                          exercise.completed ? 'quest-item-done' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <span className="quest-hit -ml-1 pointer-events-none">
+                    return (
+                      <li key={exercise._id}>
+                        <button
+                          type="button"
+                          onClick={() => onToggleExercise(workout._id, exercise._id)}
+                          disabled={isFrozen || workoutSyncing}
+                          className={`quest-item w-full text-left ${
+                            exercise.completed ? 'quest-item-done' : ''
+                          }`}
+                        >
+                          <span className="quest-hit -ml-1">
                             <span
                               className={`quest-checkbox ${
                                 exercise.completed ? 'quest-checkbox-done' : ''
@@ -367,92 +500,28 @@ export default function DailyTaskList({
                               {exercise.completed && '✓'}
                             </span>
                           </span>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-[13px] sm:text-sm ${
-                                exercise.completed ? 'line-through text-slate-500' : 'text-white'
-                              }`}
-                            >
-                              {exercise.name}
-                            </p>
-                            <p className="text-[11px] font-mono-data text-neon-teal mt-0.5">
-                              {steps.toLocaleString()} / {target.toLocaleString()} Steps
-                            </p>
-                          </div>
-                        </div>
-                        <div className="progress-track">
-                          <div
-                            className="progress-fill"
-                            style={{ width: `${Math.min(100, Math.round((steps / target) * 100))}%` }}
-                          />
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {STEP_DELTAS.map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              disabled={isFrozen || workoutSyncing || steps >= target}
-                              onClick={() => onAddSteps?.(workout._id, exercise._id, d)}
-                              className="workout-bulk-btn"
-                            >
-                              +{d.toLocaleString()}
-                            </button>
-                          ))}
-                          {steps > 0 && (
-                            <button
-                              type="button"
-                              disabled={isFrozen || workoutSyncing}
-                              onClick={() => onAddSteps?.(workout._id, exercise._id, -500)}
-                              className="workout-bulk-btn workout-bulk-btn-muted"
-                            >
-                              −500
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                }
-
-                return (
-                  <li key={exercise._id}>
-                    <button
-                      type="button"
-                      onClick={() => onToggleExercise(workout._id, exercise._id)}
-                      disabled={isFrozen || workoutSyncing}
-                      className={`quest-item w-full text-left ${
-                        exercise.completed ? 'quest-item-done' : ''
-                      }`}
-                    >
-                      <span className="quest-hit -ml-1">
-                        <span
-                          className={`quest-checkbox ${
-                            exercise.completed ? 'quest-checkbox-done' : ''
-                          }`}
-                        >
-                          {exercise.completed && '✓'}
-                        </span>
-                      </span>
-                      <span
-                        className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
-                          exercise.completed ? 'line-through text-slate-500' : 'text-white'
-                        }`}
-                      >
-                        {exercise.name}
-                        {exercise.currentWeightKg != null && (
-                          <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
-                            {exercise.currentWeightKg}kg
+                          <span
+                            className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
+                              exercise.completed ? 'line-through text-slate-500' : 'text-white'
+                            }`}
+                          >
+                            {exercise.name}
+                            {exercise.currentWeightKg != null && (
+                              <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
+                                {exercise.currentWeightKg}kg
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </span>
-                      <span className="quest-meta-pill">
-                        {exercise.sets}×{exercise.repRange}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                          <span className="quest-meta-pill">
+                            {exercise.sets}×{exercise.repRange}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </section>
         )}
       </div>

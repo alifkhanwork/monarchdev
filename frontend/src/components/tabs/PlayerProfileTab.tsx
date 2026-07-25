@@ -28,7 +28,29 @@ interface PlayerProfileTabProps {
   onShopPurchased?: () => void;
 }
 
-type ProfilePanel = 'performance' | 'attributes';
+type ChartPanel = 'performance' | 'attributes';
+type ProfileSubTab = 'overview' | 'records';
+
+const PROFILE_SUBTAB_KEY = 'the-system-profile-subtab';
+
+function loadProfileSubTab(): ProfileSubTab {
+  if (typeof window === 'undefined') return 'overview';
+  try {
+    const raw = sessionStorage.getItem(PROFILE_SUBTAB_KEY);
+    return raw === 'records' ? 'records' : 'overview';
+  } catch {
+    return 'overview';
+  }
+}
+
+function saveProfileSubTab(tab: ProfileSubTab) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(PROFILE_SUBTAB_KEY, tab);
+  } catch {
+    // ignore
+  }
+}
 
 export default function PlayerProfileTab({
   user,
@@ -38,11 +60,21 @@ export default function PlayerProfileTab({
 }: PlayerProfileTabProps) {
   const [selectedDate, setSelectedDate] = useState(getTodayKey);
   const [journalEntry, setJournalEntry] = useState('');
-  const [activePanel, setActivePanel] = useState<ProfilePanel>('performance');
+  const [activePanel, setActivePanel] = useState<ChartPanel>('performance');
+  const [subTab, setSubTab] = useState<ProfileSubTab>('overview');
+
+  useEffect(() => {
+    setSubTab(loadProfileSubTab());
+  }, []);
 
   useEffect(() => {
     setJournalEntry(loadJournalForDate(selectedDate));
   }, [selectedDate]);
+
+  const selectSubTab = (next: ProfileSubTab) => {
+    setSubTab(next);
+    saveProfileSubTab(next);
+  };
 
   const handleJournalSave = async (text: string) => {
     const trimmed = text.trim();
@@ -69,13 +101,13 @@ export default function PlayerProfileTab({
   };
 
   const gearColumn = (
-    <div className="space-y-2">
+    <div className="space-y-2 w-full">
       <div className="interactive-card text-center py-3 px-3">
         <p className="text-[10px] uppercase tracking-[0.3em] text-neon-teal/70">Total Power</p>
         <p className="text-4xl font-bold text-glow-gold font-mono-data leading-none mt-1">
           {user.totalPower.toLocaleString()}
         </p>
-        <p className="text-[9px] text-slate-500 mt-1.5 uppercase tracking-wider">
+        <p className="text-[9px] text-slate-400 mt-1.5 uppercase tracking-wider">
           Base + gear + level
         </p>
       </div>
@@ -101,7 +133,7 @@ export default function PlayerProfileTab({
           />
         </div>
         <div className="flex flex-col gap-2 shrink-0 items-stretch sm:items-end">
-          <label className="text-[10px] uppercase tracking-wider text-slate-500">
+          <label className="text-[10px] uppercase tracking-wider text-slate-400">
             Equipped Title
             <select
               value={user.equippedTitle}
@@ -128,85 +160,129 @@ export default function PlayerProfileTab({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-2.5 items-start">
-        <div className="lg:col-span-3 glass-panel !p-3 flex flex-col min-h-[280px]">
-          <div className="flex gap-1.5 mb-3">
+      {/* Matches The Grind Weekly/Monthly segmented control */}
+      <div className="glass-panel !py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="inline-flex rounded border border-cyan-500/25 p-0.5 bg-slate-950/50">
+          {(
+            [
+              { id: 'overview' as const, label: 'Overview' },
+              { id: 'records' as const, label: 'Records & Progress' },
+            ] as const
+          ).map((tab) => (
             <button
+              key={tab.id}
               type="button"
-              onClick={() => setActivePanel('performance')}
-              className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
-                activePanel === 'performance'
-                  ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
-                  : 'border-transparent text-slate-500 hover:text-slate-300'
+              onClick={() => selectSubTab(tab.id)}
+              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-all min-h-[36px] ${
+                subTab === tab.id
+                  ? 'bg-cyan-500/20 text-neon-teal'
+                  : 'text-slate-500 hover:text-slate-300'
               }`}
             >
-              Performance Graph
+              {tab.label}
             </button>
-            <button
-              type="button"
-              onClick={() => setActivePanel('attributes')}
-              className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
-                activePanel === 'attributes'
-                  ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
-                  : 'border-transparent text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              Detailed Attributes
-            </button>
-          </div>
-
-          {activePanel === 'performance' ? (
-            <PerformanceOverviewChart
-              history={user.statHistory || []}
-              currentPower={user.totalPower}
-              level={user.level}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-              <div className="flex justify-center max-w-[260px] mx-auto w-full">
-                <StatRadarChart stats={user.stats} effectiveStats={user.effectiveStats} />
-              </div>
-              <div className="lg:hidden">{gearColumn}</div>
-              <div className="hidden md:block text-meta">
-                Hunter attributes: Strength (workouts), Endurance (cardio &amp; recovery),
-                Intelligence (study &amp; portfolio), Perception (journal &amp; reading), Vitality
-                (water, sleep, nutrition). Gear multiplies soft stats on the radar.
-              </div>
-            </div>
-          )}
+          ))}
         </div>
-
-        <div className="lg:col-span-2 hidden lg:block">{gearColumn}</div>
-        {activePanel === 'performance' && <div className="lg:hidden">{gearColumn}</div>}
+        <p className="text-meta">
+          {subTab === 'overview'
+            ? 'Stats, gear, streak & journal'
+            : 'Shop, PRs, milestones & training log'}
+        </p>
       </div>
 
-      <StreakCalendar
-        dayCompletionLog={user.dayCompletionLog || []}
-        currentStreak={user.streak.current}
-        bestStreak={Math.max(user.streak.best, user.streak.current)}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
+      {subTab === 'overview' ? (
+        <div className="space-y-2.5">
+          <div className="flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-start">
+            <div className="glass-panel !p-3 flex flex-col flex-1 min-w-0">
+              <div className="flex gap-1.5 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setActivePanel('performance')}
+                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
+                    activePanel === 'performance'
+                      ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
+                      : 'border-transparent text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  Performance Graph
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePanel('attributes')}
+                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
+                    activePanel === 'attributes'
+                      ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
+                      : 'border-transparent text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  Detailed Attributes
+                </button>
+              </div>
 
-      <JournalPanel
-        journalEntry={journalEntry}
-        onSave={handleJournalSave}
-        viewDateLabel={formatJournalDateLabel(selectedDate)}
-        dateKey={selectedDate}
-        isToday={selectedDate === getTodayKey()}
-      />
+              {activePanel === 'performance' ? (
+                <PerformanceOverviewChart
+                  history={user.statHistory || []}
+                  currentPower={user.totalPower}
+                  level={user.level}
+                />
+              ) : (
+                <div className="flex flex-col md:flex-row gap-3 items-center md:items-start">
+                  <div className="flex justify-center max-w-[260px] w-full shrink-0">
+                    <StatRadarChart stats={user.stats} effectiveStats={user.effectiveStats} />
+                  </div>
+                  <p className="text-meta md:pt-2">
+                    Hunter attributes: Strength (workouts), Endurance (cardio &amp; recovery),
+                    Intelligence (study &amp; portfolio), Perception (journal &amp; reading),
+                    Vitality (water, sleep, nutrition). Gear multiplies soft stats on the radar.
+                  </p>
+                </div>
+              )}
+            </div>
 
-      <RewardShopSection onPurchased={onShopPurchased} />
+            <div className="w-full lg:w-64 xl:w-72 shrink-0">{gearColumn}</div>
+          </div>
 
-      {user.lifetimeStats && (
-        <LifetimeStatsSection
-          lifetimeStats={user.lifetimeStats}
-          weeklyProgress={user.weeklyProgress}
-          onGoTrain={onGoTrain}
-        />
+          {user.lifetimeStats && (
+            <LifetimeStatsSection
+              lifetimeStats={user.lifetimeStats}
+              weeklyProgress={user.weeklyProgress}
+              onGoTrain={onGoTrain}
+              sections={['hunterProgress']}
+            />
+          )}
+
+          <StreakCalendar
+            dayCompletionLog={user.dayCompletionLog || []}
+            currentStreak={user.streak.current}
+            bestStreak={Math.max(user.streak.best, user.streak.current)}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+
+          <JournalPanel
+            journalEntry={journalEntry}
+            onSave={handleJournalSave}
+            viewDateLabel={formatJournalDateLabel(selectedDate)}
+            dateKey={selectedDate}
+            isToday={selectedDate === getTodayKey()}
+          />
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <RewardShopSection onPurchased={onShopPurchased} />
+
+          {user.lifetimeStats && (
+            <LifetimeStatsSection
+              lifetimeStats={user.lifetimeStats}
+              weeklyProgress={user.weeklyProgress}
+              onGoTrain={onGoTrain}
+              sections={['weeklyProgress', 'personalRecords', 'milestones']}
+            />
+          )}
+
+          <TrainingProgressSection onGoTrain={onGoTrain} />
+        </div>
       )}
-
-      <TrainingProgressSection onGoTrain={onGoTrain} />
     </div>
   );
 }

@@ -196,19 +196,13 @@ export default function DailyGrindTab({
           onToggle={() => toggleCustom(CUSTOM_SECTION)}
           trailing={
             !showAddForm && !editingQuest ? (
-              <span
-                role="presentation"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
+              <button
+                type="button"
+                className="journal-action-btn"
+                onClick={() => setShowAddForm(true)}
               >
-                <button
-                  type="button"
-                  className="journal-action-btn"
-                  onClick={() => setShowAddForm(true)}
-                >
-                  + Add quest
-                </button>
-              </span>
+                + Add quest
+              </button>
             ) : undefined
           }
         />

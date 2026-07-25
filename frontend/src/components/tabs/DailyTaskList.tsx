@@ -355,31 +355,25 @@ export default function DailyTaskList({
               }
               trailing={
                 !isRecovery ? (
-                  <span
-                    role="presentation"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    {!workoutCompleted ? (
-                      <button
-                        type="button"
-                        disabled={isFrozen || workoutSyncing}
-                        onClick={() => onCompleteAllExercises(workout._id)}
-                        className="workout-bulk-btn"
-                      >
-                        Check All
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isFrozen || workoutSyncing}
-                        onClick={() => onClearAllExercises(workout._id)}
-                        className="workout-bulk-btn workout-bulk-btn-muted"
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </span>
+                  !workoutCompleted ? (
+                    <button
+                      type="button"
+                      disabled={isFrozen || workoutSyncing}
+                      onClick={() => onCompleteAllExercises(workout._id)}
+                      className="workout-bulk-btn"
+                    >
+                      Check All
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isFrozen || workoutSyncing}
+                      onClick={() => onClearAllExercises(workout._id)}
+                      className="workout-bulk-btn workout-bulk-btn-muted"
+                    >
+                      Clear All
+                    </button>
+                  )
                 ) : undefined
               }
             />

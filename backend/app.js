@@ -1,4 +1,7 @@
 require('dotenv').config();
+// Daily reset at 00:00 Asia/Manila (override with APP_TIMEZONE / TZ in env)
+process.env.TZ = process.env.APP_TIMEZONE || process.env.TZ || 'Asia/Manila';
+
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');

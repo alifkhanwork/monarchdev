@@ -1,4 +1,4 @@
-const { startOfDay } = require('./dateHelpers');
+const { localDateKey } = require('./dateHelpers');
 
 const DAY_STATUSES = {
   normal: { label: 'Normal', badge: null },
@@ -14,7 +14,7 @@ const DAY_STATUSES = {
 const FROZEN_STATUSES = ['sick', 'vacation', 'busy', 'rest'];
 const VALID_STATUSES = Object.keys(DAY_STATUSES);
 
-const getTodayKey = (date = new Date()) => startOfDay(date).toISOString().split('T')[0];
+const getTodayKey = (date = new Date()) => localDateKey(date);
 
 const isFrozenStatus = (status) => FROZEN_STATUSES.includes(status);
 

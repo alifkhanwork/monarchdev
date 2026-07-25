@@ -1,7 +1,12 @@
-/** Local calendar YYYY-MM-DD (avoids UTC day-shift from toISOString). */
+/** App calendar timezone — keep in sync with backend APP_TIMEZONE (daily reset). */
+export const APP_TIMEZONE = 'Asia/Manila';
+
+/** YYYY-MM-DD in Asia/Manila (matches server daily rollover). */
 export function localDateKey(date: Date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 }

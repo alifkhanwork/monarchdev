@@ -1,15 +1,7 @@
 const { calculateTotalPower } = require('./totalPower');
+const { localDateKey } = require('./dateHelpers');
 
 const STAT_KEYS = ['strength', 'intelligence', 'perception', 'vitality', 'agility'];
-
-/** Local calendar YYYY-MM-DD — avoids UTC day-shift bugs vs toISOString(). */
-const localDateKey = (date = new Date()) => {
-  const d = date instanceof Date ? date : new Date(date);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
 
 /**
  * Upsert a dated snapshot of stats + Total Power for trend charts.

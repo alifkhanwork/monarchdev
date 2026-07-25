@@ -1,8 +1,9 @@
 const DailyTask = require('../models/DailyTask');
 const Workout = require('../models/Workout');
 const { getWorkoutDayType, isSameDay, startOfDay } = require('./dateHelpers');
-const { revertExpAndLevelDown } = require('./gameLogic');
+const { revertExpAndLevelDown, normalizeStreaks } = require('./gameLogic');
 const { appendStatHistory } = require('./statHistory');
+const { saveWithRetry } = require('./saveWithRetry');
 const {
   getTodayKey,
   getStatusForDate,
@@ -86,14 +87,21 @@ const processDayRollover = async (user) => {
           user.lastDayCompleteDate = lastProcessed;
         } else {
           user.currentStreak = 0;
+          // Mild incomplete-day penalty (frozen days never reach here)
           const expLost = Math.min(incompleteCount * 5, 50);
           if (expLost > 0) {
             revertExpAndLevelDown(user, expLost);
+          }
+          // Soft vitality decay (floor at 1) — Rank Down warning state
+          if (user.stats?.vitality != null) {
+            user.stats.vitality = Math.max(1, user.stats.vitality - 1);
           }
           user.pendingPenalty = {
             date: lastProcessed,
             incompleteCount,
             expLost,
+            vitalityLost: 1,
+            rankDownWarning: true,
             dismissed: false,
           };
           penaltyApplied = user.pendingPenalty;
@@ -110,9 +118,14 @@ const processDayRollover = async (user) => {
     user.lastProcessedDate = today;
     user.todayDayStatus = { date: getTodayKey(today), status: 'normal' };
     appendStatHistory(user, today);
-    await user.save();
+    normalizeStreaks(user);
+    await saveWithRetry(user);
   } else {
     ensureTodayStatus(user);
+    normalizeStreaks(user);
+    if (user.isModified()) {
+      await saveWithRetry(user);
+    }
   }
 
   return penaltyApplied;

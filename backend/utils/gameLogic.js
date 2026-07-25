@@ -15,6 +15,8 @@ const expRequiredForLevel = (level) => Math.floor(100 * Math.pow(1.25, level - 1
 
 const applyExpAndLevelUp = (user, expGained) => {
   user.currentExp += expGained;
+  if (user.spendableExp == null) user.spendableExp = 0;
+  user.spendableExp += Math.max(0, expGained);
   const levelUps = [];
 
   while (user.currentExp >= user.expToNextLevel) {
@@ -25,6 +27,19 @@ const applyExpAndLevelUp = (user, expGained) => {
   }
 
   return levelUps;
+};
+
+/** Ensure Best streak is never below Current (repairs drift / display bugs). */
+const normalizeStreaks = (user) => {
+  const current = user.currentStreak || 0;
+  const best = user.bestStreak || 0;
+  if (current > best) {
+    user.bestStreak = current;
+  }
+  return {
+    current: user.currentStreak || 0,
+    best: Math.max(user.bestStreak || 0, user.currentStreak || 0),
+  };
 };
 
 const incrementStat = (user, statModifier, amount = 1) => {
@@ -64,4 +79,5 @@ module.exports = {
   incrementStat,
   decrementStat,
   expRequiredForLevel,
+  normalizeStreaks,
 };

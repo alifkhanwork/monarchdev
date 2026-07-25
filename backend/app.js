@@ -12,6 +12,7 @@ const itemsRoutes = require('./routes/items');
 const weeklyRoutes = require('./routes/weekly');
 const monthlyRoutes = require('./routes/monthly');
 const progressRoutes = require('./routes/progress');
+const shopRoutes = require('./routes/shop');
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use('/api/items', itemsRoutes);
 app.use('/api/weekly', weeklyRoutes);
 app.use('/api/monthly', monthlyRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/shop', shopRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

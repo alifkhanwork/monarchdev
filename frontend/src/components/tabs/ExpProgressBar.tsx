@@ -44,13 +44,16 @@ export default function ExpProgressBar({
             </span>
             <span className="text-slate-600">·</span>
             <span className="text-slate-500">
-              Best <strong className="text-amber-300/90 font-mono-data">{bestStreak}</strong>
+              Best{' '}
+              <strong className="text-amber-300/90 font-mono-data">
+                {Math.max(bestStreak, currentStreak)}
+              </strong>
             </span>
           </div>
           <div className="flex sm:hidden items-center gap-1.5 text-[10px] font-mono-data text-slate-400">
             <span className="text-neon-teal">{currentStreak}</span>
             <span>/</span>
-            <span className="text-amber-300/80">{bestStreak}</span>
+            <span className="text-amber-300/80">{Math.max(bestStreak, currentStreak)}</span>
           </div>
         </div>
 

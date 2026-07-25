@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import type { ProgressAnalytics, WorkoutSession } from '@/types';
 
-export default function TrainingProgressSection() {
+interface TrainingProgressSectionProps {
+  onGoTrain?: () => void;
+}
+
+export default function TrainingProgressSection({ onGoTrain }: TrainingProgressSectionProps) {
   const [analytics, setAnalytics] = useState<ProgressAnalytics | null>(null);
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,31 +47,31 @@ export default function TrainingProgressSection() {
     <div className="space-y-2.5">
       <div className="glass-panel">
         <p className="panel-label mb-1">Progressive Overload</p>
-        <p className="text-[10px] text-slate-500 mb-3">
+        <p className="text-[10px] text-slate-400 mb-3">
           Training start Jul 27, 2026 · Week {analytics.trainingWeek}
           {analytics.beginnerPhase ? ' · Form-first phase (Weeks 1–4)' : ''}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="lifetime-stat-card">
-            <p className="text-[10px] text-slate-500 uppercase">Weekly Volume</p>
+            <p className="text-[10px] text-slate-400 uppercase">Weekly Volume</p>
             <p className="text-xl font-bold font-mono-data text-glow-gold">
               {analytics.weeklyVolumeKg.toLocaleString()} kg
             </p>
           </div>
           <div className="lifetime-stat-card">
-            <p className="text-[10px] text-slate-500 uppercase">Monthly Volume</p>
+            <p className="text-[10px] text-slate-400 uppercase">Monthly Volume</p>
             <p className="text-xl font-bold font-mono-data text-neon-teal">
               {analytics.monthlyVolumeKg.toLocaleString()} kg
             </p>
           </div>
           <div className="lifetime-stat-card">
-            <p className="text-[10px] text-slate-500 uppercase">Sessions</p>
+            <p className="text-[10px] text-slate-400 uppercase">Sessions</p>
             <p className="text-xl font-bold font-mono-data text-cyan-300">
               {analytics.sessionsLogged}
             </p>
           </div>
           <div className="lifetime-stat-card">
-            <p className="text-[10px] text-slate-500 uppercase">Avg Duration</p>
+            <p className="text-[10px] text-slate-400 uppercase">Avg Duration</p>
             <p className="text-xl font-bold font-mono-data text-slate-200">
               {analytics.averageDurationMin != null ? `${analytics.averageDurationMin}m` : '—'}
             </p>
@@ -92,9 +96,17 @@ export default function TrainingProgressSection() {
       <div className="glass-panel">
         <p className="panel-label mb-2">Training History</p>
         {history.length === 0 ? (
-          <p className="text-sm text-slate-500 py-4 text-center">
-            No logged sessions yet — complete a workout and submit your set reps.
-          </p>
+          <div className="text-center py-6 space-y-3">
+            <p className="text-sm text-slate-300">Log your first set to start tracking PRs</p>
+            <p className="text-meta">
+              Finish today&apos;s workout and submit set reps — history builds here.
+            </p>
+            {onGoTrain && (
+              <button type="button" className="journal-action-btn" onClick={onGoTrain}>
+                Open Daily Grind
+              </button>
+            )}
+          </div>
         ) : (
           <ul className="space-y-2">
             {history.map((s) => (
@@ -110,7 +122,7 @@ export default function TrainingProgressSection() {
                 <p className="text-[11px] text-slate-400 mb-1">{s.coachSummary?.headline}</p>
                 <ul className="space-y-0.5">
                   {s.exercises.slice(0, 4).map((ex) => (
-                    <li key={ex.exerciseName} className="text-[10px] font-mono-data text-slate-500">
+                    <li key={ex.exerciseName} className="text-[10px] font-mono-data text-slate-400">
                       {ex.exerciseName}
                       {ex.weightKg != null ? ` @ ${ex.weightKg}kg` : ''} —{' '}
                       {ex.sets.map((x) => x.reps).join('/')}
@@ -118,7 +130,7 @@ export default function TrainingProgressSection() {
                     </li>
                   ))}
                   {s.exercises.length > 4 && (
-                    <li className="text-[10px] text-slate-600">+{s.exercises.length - 4} more</li>
+                    <li className="text-[10px] text-slate-400">+{s.exercises.length - 4} more</li>
                   )}
                 </ul>
               </li>

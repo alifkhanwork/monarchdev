@@ -6,6 +6,7 @@ const { formatLifetimeStatsResponse, BADGE_DEFINITIONS } = require('../utils/lif
 const { appendStatHistory, localDateKey } = require('../utils/statHistory');
 const { saveWithRetry } = require('../utils/saveWithRetry');
 const { deriveForPeriod } = require('../utils/dailyMetricLog');
+const { normalizeStreaks } = require('../utils/gameLogic');
 
 const router = express.Router();
 
@@ -65,10 +66,7 @@ const formatUserResponse = (user, weeklyProgress = null) => {
     effectiveStats,
     totalPower,
     statHistory: user.statHistory || [],
-    streak: {
-      current: user.currentStreak || 0,
-      best: user.bestStreak || 0,
-    },
+    streak: normalizeStreaks(user),
     nextRank: getNextRank(user.level, totalPower),
     rankLadder: RANK_LADDER,
     equippedTitle: user.equippedTitle,
@@ -86,6 +84,10 @@ const formatUserResponse = (user, weeklyProgress = null) => {
       recoveryTarget: 2,
       splitLabel: 'UL × PPL',
     },
+    spendableExp: user.spendableExp || 0,
+    ownedShopItems: user.ownedShopItems || [],
+    activeThemeAccent: user.activeThemeAccent || null,
+    cheatDayTokens: user.cheatDayTokens || 0,
   };
 };
 
@@ -97,12 +99,16 @@ router.get('/', async (req, res) => {
     const alreadyHasToday = (user.statHistory || []).some((e) => e.date === todayKey);
     appendStatHistory(user, new Date(), user.equippedWeapon, user.equippedRelic);
 
-    if (!alreadyHasToday || user.isModified('statHistory')) {
+    const streakFixed = (user.currentStreak || 0) > (user.bestStreak || 0);
+    normalizeStreaks(user);
+
+    if (!alreadyHasToday || user.isModified('statHistory') || streakFixed) {
       try {
         user = await saveWithRetry(user);
       } catch (err) {
         if (err.name !== 'VersionError') throw err;
         user = await getPlayer();
+        normalizeStreaks(user);
       }
     }
 

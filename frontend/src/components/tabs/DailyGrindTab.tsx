@@ -7,6 +7,7 @@ import DailyTaskList from './DailyTaskList';
 import JournalPanel from './JournalPanel';
 import PenaltyBanner from './PenaltyBanner';
 import CustomQuestForm from './CustomQuestForm';
+import TodayPriorityCard from './TodayPriorityCard';
 import QuestCheckRow from '@/components/quests/QuestCheckRow';
 import {
   isCustomQuestCompleted,
@@ -101,11 +102,19 @@ export default function DailyGrindTab({
         currentExp={user.currentExp}
         expToNextLevel={user.expToNextLevel}
         currentStreak={dailies.streak.current}
-        bestStreak={dailies.streak.best}
+        bestStreak={Math.max(dailies.streak.best, dailies.streak.current)}
         questDone={questCounts.done}
         questTotal={questCounts.total}
         freezeHistory={dailies.freezeHistory}
       />
+
+      {!isRest && (
+        <TodayPriorityCard
+          tasks={dailies.tasks}
+          onToggleTask={onToggleTask}
+          completingId={completingId}
+        />
+      )}
 
       {isRest && (
         <section className="glass-panel !py-2.5 space-y-2">

@@ -5,6 +5,7 @@ import type { LifetimeBadge, LifetimeStats, WeeklyProgress } from '@/types';
 interface LifetimeStatsSectionProps {
   lifetimeStats: LifetimeStats;
   weeklyProgress?: WeeklyProgress;
+  onGoTrain?: () => void;
 }
 
 const MAIN_STATS = [
@@ -96,6 +97,7 @@ function BadgeChip({ badge }: { badge: LifetimeBadge }) {
 export default function LifetimeStatsSection({
   lifetimeStats,
   weeklyProgress,
+  onGoTrain,
 }: LifetimeStatsSectionProps) {
   const weekly = weeklyProgress || {
     workoutsCompleted: 0,
@@ -105,11 +107,13 @@ export default function LifetimeStatsSection({
     splitLabel: 'UL × PPL',
   };
 
+  const hasAnyPr = PR_CARDS.some((pr) => lifetimeStats.personalRecords?.[pr.key] != null);
+
   return (
     <div className="space-y-2.5">
       <div className="glass-panel">
         <p className="panel-label mb-1">Hunter Progress</p>
-        <p className="text-[10px] text-slate-500 mb-4">
+        <p className="text-[10px] text-slate-400 mb-4">
           Lifetime totals from real training — consistency over perfection
         </p>
 
@@ -124,10 +128,10 @@ export default function LifetimeStatsSection({
                 <p className={`text-xl sm:text-2xl font-bold font-mono-data ${card.accent}`}>
                   {Number(value).toLocaleString()}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">
+                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">
                   {card.label}
                 </p>
-                <p className="text-[9px] text-slate-600 mt-0.5">{card.format(Number(value))}</p>
+                <p className="text-[9px] text-slate-400 mt-0.5">{card.format(Number(value))}</p>
               </div>
             );
           })}
@@ -136,10 +140,10 @@ export default function LifetimeStatsSection({
 
       <div className="glass-panel">
         <p className="panel-label mb-1">Weekly Progress</p>
-        <p className="text-[10px] text-slate-500 mb-3">Current week · Mon–Sun</p>
+        <p className="text-[10px] text-slate-400 mb-3">Current week · Mon–Sun</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="lifetime-stat-card">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">
               Weekly Workouts
             </p>
             <p className="text-2xl font-bold font-mono-data text-glow-gold">
@@ -147,7 +151,7 @@ export default function LifetimeStatsSection({
             </p>
           </div>
           <div className="lifetime-stat-card">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">
               Weekly Recovery
             </p>
             <p className="text-2xl font-bold font-mono-data text-neon-teal">
@@ -155,7 +159,7 @@ export default function LifetimeStatsSection({
             </p>
           </div>
           <div className="lifetime-stat-card">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">
               Current Split
             </p>
             <p className="text-2xl font-bold font-mono-data text-cyan-300">{weekly.splitLabel}</p>
@@ -165,22 +169,38 @@ export default function LifetimeStatsSection({
 
       <div className="glass-panel">
         <p className="panel-label mb-1">Personal Records</p>
-        <p className="text-[10px] text-slate-500 mb-3">
-          Ready for future logging — set your first PRs in training
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {PR_CARDS.map((pr) => {
-            const val = lifetimeStats.personalRecords?.[pr.key];
-            return (
-              <div key={pr.key} className="lifetime-stat-card !py-2.5">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">{pr.label}</p>
-                <p className="text-lg font-bold font-mono-data text-slate-300 mt-1">
-                  {val != null ? `${val} ${pr.suffix}` : '—'}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        {!hasAnyPr ? (
+          <div className="text-center py-6 space-y-3">
+            <p className="text-sm text-slate-300">
+              Log your first set to start tracking PRs
+            </p>
+            <p className="text-meta">
+              Complete a workout and submit performance — records appear here.
+            </p>
+            {onGoTrain && (
+              <button type="button" className="journal-action-btn" onClick={onGoTrain}>
+                Open Daily Grind
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="text-[10px] text-slate-400 mb-3">Lifetime bests from logged training</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {PR_CARDS.map((pr) => {
+                const val = lifetimeStats.personalRecords?.[pr.key];
+                return (
+                  <div key={pr.key} className="lifetime-stat-card !py-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-400">{pr.label}</p>
+                    <p className="text-lg font-bold font-mono-data text-slate-200 mt-1">
+                      {val != null ? `${val} ${pr.suffix}` : '—'}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="glass-panel">
@@ -190,7 +210,7 @@ export default function LifetimeStatsSection({
             const badges = lifetimeStats.badges[group.badgeKey] || [];
             return (
               <div key={group.badgeKey}>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-2">

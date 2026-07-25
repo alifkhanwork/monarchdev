@@ -99,12 +99,18 @@ export interface User {
   lifetimeStats?: LifetimeStats;
   dayCompletionLog?: DayCompletionEntry[];
   weeklyProgress?: WeeklyProgress;
+  spendableExp?: number;
+  ownedShopItems?: string[];
+  activeThemeAccent?: string | null;
+  cheatDayTokens?: number;
 }
 
 export interface PenaltyInfo {
   date: string;
   incompleteCount: number;
   expLost: number;
+  vitalityLost?: number;
+  rankDownWarning?: boolean;
   dismissed: boolean;
 }
 
@@ -340,5 +346,24 @@ export interface CoachFeedback {
     recommendation: string;
     nextWeight?: number | null;
   }[];
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  type: 'title' | 'theme' | 'token' | string;
+  payload: string;
+  stackable?: boolean;
+  owned: boolean;
+  canAfford: boolean;
+}
+
+export interface ShopResponse {
+  spendableExp: number;
+  cheatDayTokens: number;
+  activeThemeAccent: string | null;
+  items: ShopItem[];
 }
 

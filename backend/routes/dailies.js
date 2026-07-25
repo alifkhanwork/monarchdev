@@ -7,6 +7,7 @@ const {
   calculateExpReward,
   applyExpAndLevelUp,
   revertExpAndLevelDown,
+  normalizeStreaks,
 } = require('../utils/gameLogic');
 const {
   processDayRollover,
@@ -185,10 +186,7 @@ router.get('/', async (req, res) => {
       workout: workout ? formatWorkoutResponse(workout, today, progressMap) : null,
       tasks: tasksWithStatus,
       groupedTasks,
-      streak: {
-        current: refreshedUser.currentStreak || 0,
-        best: refreshedUser.bestStreak || 0,
-      },
+      streak: normalizeStreaks(refreshedUser),
       todayExp: { earned: earnedExp, possible: possibleExp },
       dayComplete: todayStatus.complete,
       penalty,

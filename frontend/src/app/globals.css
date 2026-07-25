@@ -95,6 +95,7 @@
   .text-meta {
     font-size: var(--meta-size);
     line-height: 1.2;
+    /* WCAG AA-ish on navy: was #64748b / slate-500; bump to slate-400 */
     color: #94a3b8;
   }
 
@@ -132,6 +133,11 @@
 
   .milestone-quest-done {
     @apply opacity-70;
+  }
+
+  .milestone-quest-overdue {
+    @apply border-red-500/35;
+    box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.12);
   }
 
   .progress-track {

@@ -43,6 +43,8 @@ const userSchema = new mongoose.Schema(
       date: { type: Date, default: null },
       incompleteCount: { type: Number, default: 0 },
       expLost: { type: Number, default: 0 },
+      vitalityLost: { type: Number, default: 0 },
+      rankDownWarning: { type: Boolean, default: false },
       dismissed: { type: Boolean, default: true },
     },
     todayDayStatus: {
@@ -97,6 +99,11 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: ['Novice Hunter', 'Aspiring Shadow', 'Disciplined Warrior'],
     },
+    /** Credits earned alongside EXP for the Reward Shop (does not affect level). */
+    spendableExp: { type: Number, default: 0 },
+    ownedShopItems: { type: [String], default: [] },
+    activeThemeAccent: { type: String, default: null },
+    cheatDayTokens: { type: Number, default: 0 },
     inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Item' }],
     equippedWeapon: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
     equippedRelic: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },

@@ -11,6 +11,7 @@ import LockedGearSlot from '@/components/profile/LockedGearSlot';
 import StreakCalendar from '@/components/profile/StreakCalendar';
 import LifetimeStatsSection from '@/components/profile/LifetimeStatsSection';
 import TrainingProgressSection from '@/components/profile/TrainingProgressSection';
+import RewardShopSection from '@/components/profile/RewardShopSection';
 import JournalPanel from '@/components/tabs/JournalPanel';
 import { exportHunterBackup } from '@/lib/exportBackup';
 import {
@@ -23,11 +24,18 @@ import {
 interface PlayerProfileTabProps {
   user: User;
   onTitleChange: (title: string) => void;
+  onGoTrain?: () => void;
+  onShopPurchased?: () => void;
 }
 
 type ProfilePanel = 'performance' | 'attributes';
 
-export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileTabProps) {
+export default function PlayerProfileTab({
+  user,
+  onTitleChange,
+  onGoTrain,
+  onShopPurchased,
+}: PlayerProfileTabProps) {
   const [selectedDate, setSelectedDate] = useState(getTodayKey);
   const [journalEntry, setJournalEntry] = useState('');
   const [activePanel, setActivePanel] = useState<ProfilePanel>('performance');
@@ -175,7 +183,7 @@ export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileT
       <StreakCalendar
         dayCompletionLog={user.dayCompletionLog || []}
         currentStreak={user.streak.current}
-        bestStreak={user.streak.best}
+        bestStreak={Math.max(user.streak.best, user.streak.current)}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
       />
@@ -188,14 +196,17 @@ export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileT
         isToday={selectedDate === getTodayKey()}
       />
 
+      <RewardShopSection onPurchased={onShopPurchased} />
+
       {user.lifetimeStats && (
         <LifetimeStatsSection
           lifetimeStats={user.lifetimeStats}
           weeklyProgress={user.weeklyProgress}
+          onGoTrain={onGoTrain}
         />
       )}
 
-      <TrainingProgressSection />
+      <TrainingProgressSection onGoTrain={onGoTrain} />
     </div>
   );
 }

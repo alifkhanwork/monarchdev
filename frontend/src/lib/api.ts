@@ -7,6 +7,7 @@ import type {
   GrindResponse,
   Milestone,
   ProgressAnalytics,
+  ShopResponse,
   UncompleteTaskResponse,
   User,
   WorkoutSession,
@@ -154,4 +155,23 @@ export const api = {
 
   getExerciseProgress: () =>
     fetchAPI<{ exercises: unknown[]; availableWeights: number[] }>('/api/progress/exercises'),
+
+  getShop: () => fetchAPI<ShopResponse>('/api/shop'),
+
+  purchaseShopItem: (itemId: string) =>
+    fetchAPI<{
+      message: string;
+      shop: ShopResponse;
+      equippedTitle: string;
+      availableTitles: string[];
+    }>('/api/shop/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ itemId }),
+    }),
+
+  equipShopTheme: (accent: string | null) =>
+    fetchAPI<{ activeThemeAccent: string | null }>('/api/shop/equip-theme', {
+      method: 'POST',
+      body: JSON.stringify({ accent }),
+    }),
 };

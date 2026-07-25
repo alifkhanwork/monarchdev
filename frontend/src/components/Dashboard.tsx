@@ -535,7 +535,14 @@ export default function Dashboard() {
         {activeTab === 'grind' && <GrindHubTab />}
 
         {activeTab === 'profile' && (
-          <PlayerProfileTab user={user} onTitleChange={handleTitleChange} />
+          <PlayerProfileTab
+            user={user}
+            onTitleChange={handleTitleChange}
+            onGoTrain={() => setActiveTab('daily')}
+            onShopPurchased={() => {
+              void fetchAll();
+            }}
+          />
         )}
 
         {activeTab === 'milestones' && (

@@ -1,0 +1,118 @@
+const express = require('express');
+const WorkoutSession = require('../models/WorkoutSession');
+const ExerciseProgress = require('../models/ExerciseProgress');
+const {
+  logWorkoutSession,
+  getAnalytics,
+  getProgressMap,
+  formatProgressCard,
+} = require('../utils/progressService');
+const {
+  AVAILABLE_WEIGHTS,
+  trainingWeekNumber,
+  isBeginnerPhase,
+  TRAINING_START,
+} = require('../utils/progressiveOverload');
+
+const router = express.Router();
+
+router.get('/meta', (_req, res) => {
+  res.json({
+    trainingStart: TRAINING_START.toISOString().slice(0, 10),
+    trainingWeek: trainingWeekNumber(),
+    beginnerPhase: isBeginnerPhase(),
+    availableWeights: AVAILABLE_WEIGHTS,
+    method: 'double_progression',
+  });
+});
+
+router.get('/exercises', async (_req, res) => {
+  try {
+    const docs = await ExerciseProgress.find().sort({ exerciseName: 1 });
+    res.json({
+      exercises: docs.map(formatProgressCard),
+      availableWeights: AVAILABLE_WEIGHTS,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch exercise progress', error: error.message });
+  }
+});
+
+router.get('/exercises/:name', async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const doc = await ExerciseProgress.findOne({ exerciseName: name });
+    if (!doc) return res.status(404).json({ message: 'Exercise not found' });
+    res.json(formatProgressCard(doc));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch exercise', error: error.message });
+  }
+});
+
+router.get('/history', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 30, 90);
+    const sessions = await WorkoutSession.find()
+      .sort({ dateKey: -1 })
+      .limit(limit)
+      .lean();
+    res.json({ sessions });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch history', error: error.message });
+  }
+});
+
+router.get('/analytics', async (_req, res) => {
+  try {
+    const analytics = await getAnalytics();
+    res.json(analytics);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch analytics', error: error.message });
+  }
+});
+
+router.get('/map', async (_req, res) => {
+  try {
+    res.json({ map: await getProgressMap() });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch progress map', error: error.message });
+  }
+});
+
+/**
+ * Body:
+ * {
+ *   dayType, workoutId?, durationMin?,
+ *   exercises: [{ exerciseName, weightKg?, targetSets, targetRepRange, sets: [{ setNumber, reps, weightKg? }] }]
+ * }
+ */
+router.post('/log-session', async (req, res) => {
+  try {
+    const { dayType, workoutId, exercises, durationMin } = req.body || {};
+    if (!dayType || !Array.isArray(exercises) || exercises.length === 0) {
+      return res.status(400).json({
+        message: 'dayType and exercises[] are required',
+      });
+    }
+
+    const result = await logWorkoutSession({
+      dayType,
+      workoutId,
+      exercises,
+      durationMin,
+    });
+
+    res.json({
+      message: 'Session logged',
+      session: result.session,
+      coach: result.coach,
+      trainingWeek: result.trainingWeek,
+      beginnerPhase: result.beginnerPhase,
+      availableWeights: AVAILABLE_WEIGHTS,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to log session', error: error.message });
+  }
+});
+
+module.exports = router;

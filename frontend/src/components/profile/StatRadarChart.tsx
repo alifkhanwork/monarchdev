@@ -20,10 +20,10 @@ export default function StatRadarChart({ stats, effectiveStats }: StatRadarChart
 
   const data = [
     { stat: 'STR', value: display.strength, fullMark: 100 },
+    { stat: 'END', value: display.agility ?? stats.agility ?? 10, fullMark: 100 },
     { stat: 'INT', value: display.intelligence, fullMark: 100 },
     { stat: 'PER', value: display.perception, fullMark: 100 },
     { stat: 'VIT', value: display.vitality, fullMark: 100 },
-    { stat: 'AGI', value: display.agility ?? stats.agility ?? 10, fullMark: 100 },
   ];
 
   const total = data.reduce((sum, d) => sum + d.value, 0);

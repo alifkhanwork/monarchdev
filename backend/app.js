@@ -11,6 +11,7 @@ const milestonesRoutes = require('./routes/milestones');
 const itemsRoutes = require('./routes/items');
 const weeklyRoutes = require('./routes/weekly');
 const monthlyRoutes = require('./routes/monthly');
+const progressRoutes = require('./routes/progress');
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.get('/', (req, res) => {
       dailies: '/api/dailies',
       milestones: '/api/milestones',
       items: '/api/items',
+      progress: '/api/progress',
     },
   });
 });
@@ -83,6 +85,7 @@ app.use('/api/milestones', milestonesRoutes);
 app.use('/api/items', itemsRoutes);
 app.use('/api/weekly', weeklyRoutes);
 app.use('/api/monthly', monthlyRoutes);
+app.use('/api/progress', progressRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

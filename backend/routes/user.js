@@ -3,7 +3,9 @@ const { getPlayer } = require('../utils/getPlayer');
 const { calculateTotalPower } = require('../utils/totalPower');
 const { getNextRank, RANK_LADDER } = require('../utils/ranks');
 const { formatLifetimeStatsResponse, BADGE_DEFINITIONS } = require('../utils/lifetimeStats');
-const { appendStatHistory } = require('../utils/statHistory');
+const { appendStatHistory, localDateKey } = require('../utils/statHistory');
+const { saveWithRetry } = require('../utils/saveWithRetry');
+const { deriveForPeriod } = require('../utils/dailyMetricLog');
 
 const router = express.Router();
 
@@ -45,7 +47,7 @@ const formatItem = (item) => {
   };
 };
 
-const formatUserResponse = (user) => {
+const formatUserResponse = (user, weeklyProgress = null) => {
   const { totalPower, effectiveStats } = calculateTotalPower(
     user,
     user.equippedWeapon,
@@ -77,17 +79,43 @@ const formatUserResponse = (user) => {
     inventory: (user.inventory || []).map(formatItem).filter(Boolean),
     lifetimeStats: formatLifetimeStatsResponse(user),
     dayCompletionLog: user.dayCompletionLog || [],
+    weeklyProgress: weeklyProgress || {
+      workoutsCompleted: 0,
+      workoutsTarget: 5,
+      recoveryCompleted: 0,
+      recoveryTarget: 2,
+      splitLabel: 'UL × PPL',
+    },
   };
 };
 
 // GET /api/user - Fetch player stats, loadout, and total power
 router.get('/', async (req, res) => {
   try {
-    const user = await getPlayer();
-    // Ensure today's power snapshot exists so the Performance Graph can accumulate
+    let user = await getPlayer();
+    const todayKey = localDateKey();
+    const alreadyHasToday = (user.statHistory || []).some((e) => e.date === todayKey);
     appendStatHistory(user, new Date(), user.equippedWeapon, user.equippedRelic);
-    await user.save();
-    res.json(formatUserResponse(user));
+
+    if (!alreadyHasToday || user.isModified('statHistory')) {
+      try {
+        user = await saveWithRetry(user);
+      } catch (err) {
+        if (err.name !== 'VersionError') throw err;
+        user = await getPlayer();
+      }
+    }
+
+    const derived = await deriveForPeriod('weekly');
+    const weeklyProgress = {
+      workoutsCompleted: derived.workouts,
+      workoutsTarget: 5,
+      recoveryCompleted: derived.recoveryDays || 0,
+      recoveryTarget: 2,
+      splitLabel: 'UL × PPL',
+    };
+
+    res.json(formatUserResponse(user, weeklyProgress));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch user', error: error.message });
   }

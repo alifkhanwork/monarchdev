@@ -10,6 +10,7 @@ import GearCard from '@/components/profile/GearCard';
 import LockedGearSlot from '@/components/profile/LockedGearSlot';
 import StreakCalendar from '@/components/profile/StreakCalendar';
 import LifetimeStatsSection from '@/components/profile/LifetimeStatsSection';
+import TrainingProgressSection from '@/components/profile/TrainingProgressSection';
 import JournalPanel from '@/components/tabs/JournalPanel';
 import { exportHunterBackup } from '@/lib/exportBackup';
 import {
@@ -159,8 +160,9 @@ export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileT
               </div>
               <div className="lg:hidden">{gearColumn}</div>
               <div className="hidden md:block text-meta">
-                Core attributes shape your Total Power. Equip relics and weapons to multiply soft
-                stats — the radar shows effective values after gear.
+                Hunter attributes: Strength (workouts), Endurance (cardio &amp; recovery),
+                Intelligence (study &amp; portfolio), Perception (journal &amp; reading), Vitality
+                (water, sleep, nutrition). Gear multiplies soft stats on the radar.
               </div>
             </div>
           )}
@@ -186,7 +188,14 @@ export default function PlayerProfileTab({ user, onTitleChange }: PlayerProfileT
         isToday={selectedDate === getTodayKey()}
       />
 
-      {user.lifetimeStats && <LifetimeStatsSection lifetimeStats={user.lifetimeStats} />}
+      {user.lifetimeStats && (
+        <LifetimeStatsSection
+          lifetimeStats={user.lifetimeStats}
+          weeklyProgress={user.weeklyProgress}
+        />
+      )}
+
+      <TrainingProgressSection />
     </div>
   );
 }

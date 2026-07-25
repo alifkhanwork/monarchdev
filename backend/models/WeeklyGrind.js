@@ -1,18 +1,31 @@
 const mongoose = require('mongoose');
+const { TRACKING } = require('../utils/hunterMissions');
+
+const TRACKING_ENUM = Object.values(TRACKING);
 
 const weeklyGrindSchema = new mongoose.Schema(
   {
+    missionKey: { type: String, required: true, unique: true },
     title: { type: String, required: true },
-    category: { type: String, default: 'Weekly' },
+    description: { type: String, default: '' },
+    category: {
+      type: String,
+      enum: ['Fitness', 'Health', 'Knowledge', 'Professional', 'Elite', 'Weekly', 'Monthly', 'Mental'],
+      default: 'Fitness',
+    },
     targetCount: { type: Number, required: true },
     currentProgress: { type: Number, default: 0 },
     periodKey: { type: String, required: true },
-    /** manual = +/- stepper; workout / study_hours = derived from DailyMetricLog */
     trackingSource: {
       type: String,
-      enum: ['manual', 'workout', 'study_hours'],
+      enum: TRACKING_ENUM,
       default: 'manual',
     },
+    expReward: { type: Number, default: 0 },
+    unit: { type: String, default: '' },
+    sortOrder: { type: Number, default: 100 },
+    isElite: { type: Boolean, default: false },
+    rewardClaimedPeriodKey: { type: String, default: null },
   },
   { timestamps: true }
 );

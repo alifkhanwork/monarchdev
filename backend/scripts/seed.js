@@ -92,155 +92,128 @@ const seedData = async () => {
     }
   }
 
-  // --- Daily Tasks ---
-  const taskCount = await DailyTask.countDocuments();
-  if (taskCount === 0) {
-    await DailyTask.insertMany([
-      {
-        taskName: 'Wake up before 7 AM',
-        category: 'Foundation',
-        expReward: 25,
-        statModifier: 'vitality',
-      },
-      {
-        taskName: 'Make bed & tidy room',
-        category: 'Foundation',
-        expReward: 15,
-        statModifier: 'perception',
-      },
-      {
-        taskName: 'End of day journal entry',
-        category: 'Foundation',
-        expReward: 30,
-        statModifier: 'perception',
-      },
-      {
-        taskName: 'Complete workout of the day',
-        category: 'Health',
-        expReward: 50,
-        statModifier: 'strength',
-      },
-      {
-        taskName: 'Drink 3L of water',
-        category: 'Health',
-        expReward: 25,
-        statModifier: 'vitality',
-        lifetimeMetric: 'water_liters',
-        defaultLogValue: 3,
-        logValue: 3,
-      },
-      {
-        taskName: 'Hit step / distance goal',
-        category: 'Health',
-        expReward: 40,
-        statModifier: 'agility',
-        lifetimeMetric: 'distance_km',
-        defaultLogValue: 10,
-        logValue: 10,
-      },
-      {
-        taskName: 'Study / skill practice (1 hr)',
-        category: 'Mental',
-        expReward: 45,
-        statModifier: 'intelligence',
-        lifetimeMetric: 'study_hours',
-        defaultLogValue: 1,
-        logValue: 1,
-      },
-      {
-        taskName: 'Meditation or mindfulness (15 min)',
-        category: 'Mental',
-        expReward: 30,
-        statModifier: 'perception',
-      },
-      {
-        taskName: 'Work on portfolio / job apps',
-        category: 'Professional',
-        expReward: 50,
-        statModifier: 'intelligence',
-      },
-      {
-        taskName: 'Networking or professional outreach',
-        category: 'Professional',
-        expReward: 35,
-        statModifier: 'agility',
-      },
-    ]);
-    console.log('Daily tasks seeded');
+  // --- Daily Tasks (canonical Hunter quest board) ---
+  const CANONICAL_DAILIES = [
+    {
+      taskName: 'Drink 3L of water',
+      category: 'Health',
+      expReward: 25,
+      statModifier: 'vitality',
+      statRewards: [{ stat: 'vitality', amount: 1 }],
+      lifetimeMetric: 'water_liters',
+      defaultLogValue: 3,
+      logValue: 3,
+    },
+    {
+      taskName: 'Eat at least 3 High-Protein Meals',
+      category: 'Health',
+      expReward: 30,
+      statModifier: 'vitality',
+      statRewards: [{ stat: 'vitality', amount: 1 }],
+    },
+    {
+      taskName: 'Sleep at least 7 Hours',
+      category: 'Health',
+      expReward: 30,
+      statModifier: 'vitality',
+      statRewards: [{ stat: 'vitality', amount: 1 }],
+    },
+    {
+      taskName: 'Study / skill practice (1 hr)',
+      category: 'Mental',
+      expReward: 45,
+      statModifier: 'intelligence',
+      statRewards: [{ stat: 'intelligence', amount: 2 }],
+      lifetimeMetric: 'study_hours',
+      defaultLogValue: 1,
+      logValue: 1,
+    },
+    {
+      taskName: 'End of day journal entry',
+      category: 'Mental',
+      expReward: 30,
+      statModifier: 'perception',
+      statRewards: [{ stat: 'perception', amount: 1 }],
+    },
+    {
+      taskName: 'Read 10 Pages OR Learn for 15 Minutes',
+      category: 'Mental',
+      expReward: 30,
+      statModifier: 'perception',
+      statRewards: [{ stat: 'perception', amount: 1 }],
+    },
+    {
+      taskName: 'Work on portfolio / job apps',
+      category: 'Productivity',
+      expReward: 50,
+      statModifier: 'intelligence',
+      statRewards: [{ stat: 'intelligence', amount: 1 }],
+    },
+    {
+      taskName: "Complete Today's Most Important Task",
+      category: 'Productivity',
+      expReward: 40,
+      statModifier: 'intelligence',
+      statRewards: [{ stat: 'intelligence', amount: 1 }],
+    },
+    {
+      taskName: 'Complete workout of the day',
+      category: 'Health',
+      expReward: 80,
+      statModifier: 'strength',
+      statRewards: [
+        { stat: 'strength', amount: 2 },
+        { stat: 'agility', amount: 1 },
+      ],
+    },
+  ];
+
+  const keepNames = new Set(CANONICAL_DAILIES.map((t) => t.taskName));
+  const removed = await DailyTask.deleteMany({ taskName: { $nin: [...keepNames] } });
+  if (removed.deletedCount > 0) {
+    console.log(`Removed ${removed.deletedCount} obsolete daily quests`);
   }
 
-  // Backfill lifetime-tracking quests for existing databases
+  for (const def of CANONICAL_DAILIES) {
+    const existing = await DailyTask.findOne({ taskName: def.taskName });
+    if (!existing) {
+      await DailyTask.create(def);
+      console.log(`Added daily quest: ${def.taskName}`);
+    } else {
+      existing.category = def.category;
+      existing.expReward = def.expReward;
+      existing.statModifier = def.statModifier;
+      existing.statRewards = def.statRewards;
+      existing.lifetimeMetric = def.lifetimeMetric || 'none';
+      if (def.defaultLogValue != null) {
+        existing.defaultLogValue = def.defaultLogValue;
+        if (!existing.logValue) existing.logValue = def.defaultLogValue;
+      }
+      await existing.save();
+    }
+  }
+  console.log('Daily quests synced to Hunter board');
+
+  // Backfill category aliases
   await DailyTask.updateMany(
     { category: 'Physical' },
     { $set: { category: 'Health' } }
   );
   await DailyTask.updateMany(
-    { category: { $nin: ['Foundation', 'Health', 'Mental', 'Professional'] } },
-    { $set: { category: 'Health' } }
+    { category: 'Professional' },
+    { $set: { category: 'Productivity' } }
   );
-
-  await DailyTask.updateOne(
-    { taskName: 'Study / skill practice (1 hr)' },
-    {
-      $set: {
-        lifetimeMetric: 'study_hours',
-        defaultLogValue: 1,
-        logValue: 1,
-      },
-    }
-  );
-
-  const waterQuest = await DailyTask.findOne({
-    taskName: { $in: ['Drink 2L of water', 'Drink 3L of water'] },
-  });
-  if (!waterQuest) {
-    await DailyTask.create({
-      taskName: 'Drink 3L of water',
-      category: 'Health',
-      expReward: 25,
-      statModifier: 'vitality',
-      lifetimeMetric: 'water_liters',
-      defaultLogValue: 3,
-      logValue: 3,
-    });
-    console.log('Water intake quest added');
-  } else {
-    waterQuest.taskName = 'Drink 3L of water';
-    waterQuest.defaultLogValue = 3;
-    if (!waterQuest.logValue || waterQuest.logValue <= 2) {
-      waterQuest.logValue = 3;
-    }
-    await waterQuest.save();
-    console.log('Water intake quest updated to 3L');
-  }
-
-  const stepsQuest = await DailyTask.findOne({
-    taskName: { $in: ['Hit 10k steps (rest days)', 'Hit step / distance goal'] },
-  });
-  if (stepsQuest) {
-    stepsQuest.taskName = 'Hit step / distance goal';
-    stepsQuest.category = 'Health';
-    stepsQuest.lifetimeMetric = 'distance_km';
-    stepsQuest.defaultLogValue = stepsQuest.defaultLogValue || 10;
-    stepsQuest.logValue = stepsQuest.logValue || stepsQuest.defaultLogValue;
-    await stepsQuest.save();
-  } else {
-    await DailyTask.create({
-      taskName: 'Hit step / distance goal',
-      category: 'Health',
-      expReward: 40,
-      statModifier: 'agility',
-      lifetimeMetric: 'distance_km',
-      defaultLogValue: 10,
-      logValue: 10,
-    });
-    console.log('Step/distance quest added');
-  }
 
   // --- Workouts (always sync to current routine) ---
   await Workout.deleteMany({});
   await Workout.insertMany(WORKOUT_ROUTINES);
   console.log(`Workouts synced (${WORKOUT_ROUTINES.length} day types)`);
+
+  const { seedProgressFromRoutine } = require('../utils/progressService');
+  const progressCreated = await seedProgressFromRoutine(WORKOUT_ROUTINES);
+  if (progressCreated > 0) {
+    console.log(`Exercise progress baselines created: ${progressCreated}`);
+  }
 
   // --- Milestones (S-Rank Gates) ---
   const LEVEL_20_MAIN_QUESTS = [
@@ -397,122 +370,47 @@ const seedData = async () => {
 
   const weekKey = getWeekKey();
   const monthKey = getMonthKey();
+  const { WEEKLY_MISSIONS, MONTHLY_MISSIONS } = require('../utils/hunterMissions');
 
-  const weeklyCount = await WeeklyGrind.countDocuments();
-  if (weeklyCount === 0) {
-    await WeeklyGrind.insertMany([
-      {
-        title: 'Workout 5x this week',
-        category: 'Fitness',
-        targetCount: 5,
-        currentProgress: 0,
-        periodKey: weekKey,
-        trackingSource: 'workout',
-      },
-      {
-        title: 'Study 5 hrs this week',
-        category: 'Mental',
-        targetCount: 5,
-        currentProgress: 0,
-        periodKey: weekKey,
-        trackingSource: 'study_hours',
-      },
-      {
-        title: 'Read 3 chapters',
-        category: 'Mental',
-        targetCount: 3,
-        currentProgress: 0,
-        periodKey: weekKey,
-        trackingSource: 'manual',
-      },
-    ]);
-    console.log('Weekly grind seeded');
-  } else {
-    const wWorkout = await WeeklyGrind.updateMany(
-      { title: /workout/i, category: 'Fitness' },
-      { $set: { trackingSource: 'workout' } }
-    );
-    if (wWorkout.modifiedCount > 0) {
-      console.log(`Marked ${wWorkout.modifiedCount} weekly workout grind(s) as auto-tracked`);
-    }
-    const studyWeekly = await WeeklyGrind.findOne({ title: 'Study 5 hrs this week' });
-    if (!studyWeekly) {
-      await WeeklyGrind.create({
-        title: 'Study 5 hrs this week',
-        category: 'Mental',
-        targetCount: 5,
-        currentProgress: 0,
-        periodKey: weekKey,
-        trackingSource: 'study_hours',
-      });
-      console.log('Added weekly Study 5 hrs quest');
-    } else if (studyWeekly.trackingSource !== 'study_hours') {
-      studyWeekly.trackingSource = 'study_hours';
-      await studyWeekly.save();
-    }
-  }
+  // Full replace of Hunter Missions catalog (stable missionKey)
+  const syncMissions = async (Model, defs, periodKey, label) => {
+    const keep = new Set(defs.map((d) => d.missionKey));
+    // Drop legacy docs without missionKey or obsolete keys
+    await Model.deleteMany({
+      $or: [{ missionKey: { $exists: false } }, { missionKey: { $nin: [...keep] } }],
+    });
 
-  const monthlyCount = await MonthlyGrind.countDocuments();
-  if (monthlyCount === 0) {
-    await MonthlyGrind.insertMany([
-      {
-        title: 'Save $500 this month',
-        category: 'Finance',
-        targetCount: 500,
-        currentProgress: 0,
-        periodKey: monthKey,
-        trackingSource: 'manual',
-      },
-      {
-        title: '10 workout sessions',
-        category: 'Fitness',
-        targetCount: 10,
-        currentProgress: 0,
-        periodKey: monthKey,
-        trackingSource: 'workout',
-      },
-      {
-        title: 'Study 20 hrs this month',
-        category: 'Mental',
-        targetCount: 20,
-        currentProgress: 0,
-        periodKey: monthKey,
-        trackingSource: 'study_hours',
-      },
-      {
-        title: 'Finish 1 course module',
-        category: 'Professional',
-        targetCount: 1,
-        currentProgress: 0,
-        periodKey: monthKey,
-        trackingSource: 'manual',
-      },
-    ]);
-    console.log('Monthly grind seeded');
-  } else {
-    const mWorkout = await MonthlyGrind.updateMany(
-      { title: /workout/i, category: 'Fitness' },
-      { $set: { trackingSource: 'workout' } }
-    );
-    if (mWorkout.modifiedCount > 0) {
-      console.log(`Marked ${mWorkout.modifiedCount} monthly workout grind(s) as auto-tracked`);
+    for (const def of defs) {
+      const existing = await Model.findOne({ missionKey: def.missionKey });
+      if (!existing) {
+        await Model.create({
+          ...def,
+          currentProgress: 0,
+          periodKey,
+          rewardClaimedPeriodKey: null,
+        });
+      } else {
+        existing.title = def.title;
+        existing.description = def.description;
+        existing.category = def.category;
+        existing.targetCount = def.targetCount;
+        existing.trackingSource = def.trackingSource;
+        existing.expReward = def.expReward;
+        existing.unit = def.unit;
+        existing.sortOrder = def.sortOrder;
+        existing.isElite = Boolean(def.isElite);
+        if (def.eliteStatBoost != null) existing.eliteStatBoost = def.eliteStatBoost;
+        if (def.eliteBadgeId != null) existing.eliteBadgeId = def.eliteBadgeId;
+        if (!existing.periodKey) existing.periodKey = periodKey;
+        await existing.save();
+      }
     }
-    const studyMonthly = await MonthlyGrind.findOne({ title: 'Study 20 hrs this month' });
-    if (!studyMonthly) {
-      await MonthlyGrind.create({
-        title: 'Study 20 hrs this month',
-        category: 'Mental',
-        targetCount: 20,
-        currentProgress: 0,
-        periodKey: monthKey,
-        trackingSource: 'study_hours',
-      });
-      console.log('Added monthly Study 20 hrs quest');
-    } else if (studyMonthly.trackingSource !== 'study_hours') {
-      studyMonthly.trackingSource = 'study_hours';
-      await studyMonthly.save();
-    }
-  }
+    console.log(`${label} Hunter Missions synced (${defs.length})`);
+  };
+
+  await syncMissions(WeeklyGrind, WEEKLY_MISSIONS, weekKey, 'Weekly');
+  await syncMissions(MonthlyGrind, MONTHLY_MISSIONS, monthKey, 'Monthly');
+
 
   console.log('Seed complete');
   await mongoose.connection.close();

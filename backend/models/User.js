@@ -65,9 +65,23 @@ const userSchema = new mongoose.Schema(
       workoutsCompleted: { type: Number, default: 0 },
       waterLiters: { type: Number, default: 0 },
       distanceKm: { type: Number, default: 0 },
+      totalSteps: { type: Number, default: 0 },
+      activeRecoveryDays: { type: Number, default: 0 },
+      totalWeightLiftedKg: { type: Number, default: 0 },
+    },
+    workoutStreak: { type: Number, default: 0 },
+    bestWorkoutStreak: { type: Number, default: 0 },
+    lastWorkoutStreakDate: { type: Date, default: null },
+    personalRecords: {
+      mostPullUps: { type: Number, default: null },
+      heaviestGobletSquatKg: { type: Number, default: null },
+      longestPlankSec: { type: Number, default: null },
+      longestWalkKm: { type: Number, default: null },
+      fastest10kStepsMin: { type: Number, default: null },
     },
     unlockedBadges: { type: [String], default: [] },
     lastWorkoutCountedDate: { type: Date, default: null },
+    lastRecoveryCountedDate: { type: Date, default: null },
     dayCompletionLog: [
       {
         date: { type: String, required: true },

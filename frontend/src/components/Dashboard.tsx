@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import type {
+  CoachFeedback,
   CompleteTaskResponse,
   DailiesResponse,
   Milestone,
@@ -18,6 +19,8 @@ import PlayerProfileTab from '@/components/tabs/PlayerProfileTab';
 import QuestBoardTab from '@/components/tabs/QuestBoardTab';
 import LevelUpToast from '@/components/LevelUpToast';
 import ActionToast from '@/components/ActionToast';
+import WorkoutPerformanceModal from '@/components/workout/WorkoutPerformanceModal';
+import CoachFeedbackModal from '@/components/workout/CoachFeedbackModal';
 import { DAY_CLEARED_FLAVOR, pickFlavor, QUEST_CLEARED_FLAVOR } from '@/lib/systemFlavor';
 import { toggleCustomQuestCompleted, type CustomQuest } from '@/lib/customQuestsStorage';
 import {
@@ -57,6 +60,11 @@ export default function Dashboard() {
   const [journalSaving, setJournalSaving] = useState(false);
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const [customQuestTick, setCustomQuestTick] = useState(0);
+  const [perfModalOpen, setPerfModalOpen] = useState(false);
+  const [perfSubmitting, setPerfSubmitting] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachFeedback, setCoachFeedback] = useState<CoachFeedback | null>(null);
+  const [coachMeta, setCoachMeta] = useState<{ week: number; beginner: boolean } | null>(null);
 
   const journalTask = dailies?.tasks.find((t) =>
     t.taskName.toLowerCase().includes('journal')
@@ -337,6 +345,50 @@ export default function Dashboard() {
     }
   };
 
+  const handleAddSteps = async (workoutId: string, exerciseId: string, delta: number) => {
+    setWorkoutSyncing(true);
+    try {
+      const result = await api.addExerciseSteps(workoutId, exerciseId, delta);
+      await applyWorkoutSync(result);
+      const freshUser = await api.getUser();
+      setUser(freshUser);
+    } catch (err) {
+      await refreshDailies();
+      alert(err instanceof Error ? err.message : 'Failed to update steps');
+    } finally {
+      setWorkoutSyncing(false);
+    }
+  };
+
+  const handleLogPerformanceSubmit = async (payload: {
+    dayType: string;
+    workoutId: string;
+    durationMin?: number;
+    exercises: {
+      exerciseName: string;
+      weightKg?: number | null;
+      targetSets: number;
+      targetRepRange: string;
+      sets: { setNumber: number; reps: number; weightKg?: number | null }[];
+    }[];
+  }) => {
+    setPerfSubmitting(true);
+    try {
+      const result = await api.logWorkoutSession(payload);
+      setPerfModalOpen(false);
+      setCoachFeedback(result.coach);
+      setCoachMeta({ week: result.trainingWeek, beginner: result.beginnerPhase });
+      setCoachOpen(true);
+      await refreshDailies();
+      const freshUser = await api.getUser();
+      setUser(freshUser);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to log performance');
+    } finally {
+      setPerfSubmitting(false);
+    }
+  };
+
   const handleDismissPenalty = async () => {
     try {
       await api.dismissPenalty();
@@ -463,6 +515,8 @@ export default function Dashboard() {
             onToggleExercise={handleToggleExercise}
             onCompleteAllExercises={handleCompleteAllExercises}
             onClearAllExercises={handleClearAllExercises}
+            onAddSteps={handleAddSteps}
+            onLogPerformance={() => setPerfModalOpen(true)}
             workoutQuest={
               dailies.tasks.find((t) => t.taskName === WORKOUT_DAILY_TASK_NAME) ?? null
             }
@@ -493,6 +547,24 @@ export default function Dashboard() {
           />
         )}
       </main>
+
+      {dailies?.workout && (
+        <WorkoutPerformanceModal
+          open={perfModalOpen}
+          workout={dailies.workout}
+          submitting={perfSubmitting}
+          onClose={() => setPerfModalOpen(false)}
+          onSubmit={handleLogPerformanceSubmit}
+        />
+      )}
+
+      <CoachFeedbackModal
+        open={coachOpen}
+        coach={coachFeedback}
+        trainingWeek={coachMeta?.week}
+        beginnerPhase={coachMeta?.beginner}
+        onClose={() => setCoachOpen(false)}
+      />
     </>
   );
 }

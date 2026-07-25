@@ -1,20 +1,22 @@
+/** UL × PPL split with Wed/Sun recovery. */
 const getWorkoutDayType = (date = new Date()) => {
   const day = date.getDay();
   switch (day) {
     case 1:
-      return 'UpperA'; // Monday — Back & Chest
+      return 'Upper'; // Monday
     case 2:
-      return 'LowerA'; // Tuesday — Quads & Lower Abs
+      return 'Lower'; // Tuesday
     case 3:
-    case 6:
-      return 'ActiveRecovery'; // Wednesday & Saturday
+      return 'ActiveRecovery'; // Wednesday
     case 4:
-      return 'UpperB'; // Thursday — Shoulders & Arms
+      return 'Push'; // Thursday
     case 5:
-      return 'LowerB'; // Friday — Hamstrings & Upper Abs
+      return 'Pull'; // Friday
+    case 6:
+      return 'Legs'; // Saturday
     case 0:
     default:
-      return 'Rest'; // Sunday — Complete Rest / Mobility
+      return 'Recovery'; // Sunday
   }
 };
 

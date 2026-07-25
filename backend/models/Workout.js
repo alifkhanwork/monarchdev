@@ -8,6 +8,14 @@ const exerciseSchema = new mongoose.Schema(
     repRange: { type: String, required: true },
     completed: { type: Boolean, default: false },
     lastCompletedDate: { type: Date, default: null },
+    trackingType: {
+      type: String,
+      enum: ['none', 'steps'],
+      default: 'none',
+    },
+    stepTarget: { type: Number, default: 0 },
+    currentSteps: { type: Number, default: 0 },
+    lastStepsDate: { type: Date, default: null },
   },
   { _id: true }
 );

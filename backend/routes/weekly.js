@@ -7,6 +7,10 @@ const {
   ensureWeeklyPeriod,
   hydrateWeeklyQuests,
 } = require('../utils/grindSync');
+const { getPlayer } = require('../utils/getPlayer');
+const { saveWithRetry } = require('../utils/saveWithRetry');
+const { applyExpAndLevelUp } = require('../utils/gameLogic');
+const { appendStatHistory } = require('../utils/statHistory');
 
 const router = express.Router();
 
@@ -30,13 +34,14 @@ const msUntilReset = () => {
 router.get('/', async (req, res) => {
   try {
     await ensurePeriod();
-    const quests = await WeeklyGrind.find().sort({ createdAt: 1 });
-    const hydrated = await hydrateWeeklyQuests(quests);
+    const quests = await WeeklyGrind.find().sort({ sortOrder: 1, createdAt: 1 });
+    const { quests: hydrated, claims } = await hydrateWeeklyQuests(quests);
 
     res.json({
       periodKey: getWeekKey(),
       resetsInMs: msUntilReset(),
       quests: hydrated,
+      rewardClaims: claims || [],
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch weekly grind', error: error.message });
@@ -63,12 +68,29 @@ router.post('/:id/progress', async (req, res) => {
     );
     await quest.save();
 
+    let rewardClaim = null;
+    if (
+      quest.currentProgress >= quest.targetCount &&
+      quest.expReward &&
+      quest.rewardClaimedPeriodKey !== quest.periodKey
+    ) {
+      const user = await getPlayer();
+      const levelUps = applyExpAndLevelUp(user, quest.expReward);
+      quest.rewardClaimedPeriodKey = quest.periodKey;
+      await quest.save();
+      appendStatHistory(user, new Date());
+      await saveWithRetry(user);
+      rewardClaim = { expReward: quest.expReward, levelUps, title: quest.title };
+    }
+
     res.json({
       _id: quest._id,
       currentProgress: quest.currentProgress,
       progressPercent: Math.min(100, Math.round((quest.currentProgress / quest.targetCount) * 100)),
       trackingSource: quest.trackingSource || TRACKING.MANUAL,
       autoTracked: false,
+      expReward: quest.expReward,
+      rewardClaim,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update progress', error: error.message });

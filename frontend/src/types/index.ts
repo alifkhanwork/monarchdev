@@ -44,12 +44,33 @@ export interface LifetimeStats {
   workoutsCompleted: number;
   waterLiters: number;
   distanceKm: number;
+  totalSteps: number;
+  activeRecoveryDays: number;
+  totalWeightLiftedKg: number;
+  workoutStreak: number;
+  bestWorkoutStreak: number;
+  personalRecords: {
+    mostPullUps: number | null;
+    heaviestGobletSquatKg: number | null;
+    longestPlankSec: number | null;
+    longestWalkKm: number | null;
+    fastest10kStepsMin: number | null;
+  };
   badges: {
     study_hours: LifetimeBadge[];
     workouts_completed: LifetimeBadge[];
     water_liters: LifetimeBadge[];
     distance_km: LifetimeBadge[];
+    total_steps?: LifetimeBadge[];
   };
+}
+
+export interface WeeklyProgress {
+  workoutsCompleted: number;
+  workoutsTarget: number;
+  recoveryCompleted: number;
+  recoveryTarget: number;
+  splitLabel: string;
 }
 
 export interface DayCompletionEntry {
@@ -77,6 +98,7 @@ export interface User {
   inventory: GearItem[];
   lifetimeStats?: LifetimeStats;
   dayCompletionLog?: DayCompletionEntry[];
+  weeklyProgress?: WeeklyProgress;
 }
 
 export interface PenaltyInfo {
@@ -107,7 +129,8 @@ export interface DailyTask {
   category: string;
   expReward: number;
   statModifier: string;
-  lifetimeMetric: 'none' | 'study_hours' | 'water_liters' | 'distance_km';
+  statRewards?: { stat: string; amount: number }[];
+  lifetimeMetric: 'none' | 'study_hours' | 'water_liters' | 'distance_km' | 'steps';
   defaultLogValue: number;
   logValue: number;
   logUnit: string | null;
@@ -126,17 +149,30 @@ export interface Exercise {
   sets: number;
   repRange: string;
   completed: boolean;
+  trackingType?: 'none' | 'steps';
+  stepTarget?: number | null;
+  currentSteps?: number | null;
+  modality?: 'dumbbell' | 'bodyweight' | 'cardio' | 'mobility' | 'steps';
+  currentWeightKg?: number | null;
+  nextRecommendedWeightKg?: number | null;
+  progressStage?: string | null;
+  coachNote?: string | null;
+  lastPerformance?: { dateKey?: string; weightKg?: number | null; sets?: number[] } | null;
+  bestPerformance?: { dateKey?: string; weightKg?: number | null; sets?: number[]; totalReps?: number } | null;
 }
 
 export interface Workout {
   _id: string;
   dayType:
-    | 'UpperA'
-    | 'UpperB'
-    | 'LowerA'
-    | 'LowerB'
+    | 'Upper'
+    | 'Lower'
     | 'ActiveRecovery'
-    | 'Rest';
+    | 'Push'
+    | 'Pull'
+    | 'Legs'
+    | 'Recovery';
+  isRecovery?: boolean;
+  completionPercent?: number;
   exercises: Exercise[];
 }
 
@@ -178,19 +214,34 @@ export interface Milestone {
 
 export interface GrindQuest {
   _id: string;
+  missionKey?: string;
   title: string;
+  description?: string;
   category: string;
+  categoryIcon?: string;
+  categoryColor?: string;
   targetCount: number;
   currentProgress: number;
   progressPercent: number;
-  trackingSource?: 'manual' | 'workout' | 'study_hours';
+  trackingSource?: string;
   autoTracked?: boolean;
+  expReward?: number;
+  unit?: string;
+  isElite?: boolean;
+  rewardClaimed?: boolean;
+  sortOrder?: number;
 }
 
 export interface GrindResponse {
   periodKey: string;
   resetsInMs: number;
   quests: GrindQuest[];
+  rewardClaims?: {
+    missionKey?: string;
+    title: string;
+    expReward: number;
+    levelUps?: number[];
+  }[];
 }
 
 export interface CompleteTaskResponse {
@@ -241,3 +292,53 @@ export interface UncompleteTaskResponse {
     stats: UserStats;
   };
 }
+
+export interface WorkoutSessionExercise {
+  exerciseName: string;
+  weightKg?: number | null;
+  targetSets?: number;
+  targetRepRange?: string;
+  sets: { setNumber: number; reps: number; weightKg?: number | null }[];
+  progressionStage?: string;
+  recommendation?: string;
+  verdict?: string;
+}
+
+export interface WorkoutSession {
+  _id?: string;
+  dateKey: string;
+  dayType: string;
+  totalVolumeKg?: number;
+  durationMin?: number | null;
+  coachSummary?: { rating?: number; headline?: string; notes?: string[] };
+  exercises: WorkoutSessionExercise[];
+}
+
+export interface ProgressAnalytics {
+  weeklyVolumeKg: number;
+  monthlyVolumeKg: number;
+  averageSessionVolumeKg: number;
+  averageDurationMin: number | null;
+  sessionsLogged: number;
+  uniqueTrainingDays: number;
+  mostImprovedExercise: { exerciseName: string; delta: number } | null;
+  strongestExercise: { exerciseName: string; score: number } | null;
+  volumeByDay: { dateKey: string; volumeKg: number; dayType: string; rating: number | null }[];
+  trainingWeek: number;
+  beginnerPhase: boolean;
+  availableWeights: number[];
+}
+
+export interface CoachFeedback {
+  rating: number;
+  headline: string;
+  notes: string[];
+  tips?: string[];
+  cards: {
+    exerciseName: string;
+    verdict: string;
+    recommendation: string;
+    nextWeight?: number | null;
+  }[];
+}
+

@@ -7,8 +7,6 @@ const {
   calculateExpReward,
   applyExpAndLevelUp,
   revertExpAndLevelDown,
-  incrementStat,
-  decrementStat,
 } = require('../utils/gameLogic');
 const {
   processDayRollover,
@@ -27,22 +25,63 @@ const {
   revertTaskLifetimeOnUncomplete,
   adjustTaskLifetimeLogValue,
   processWorkoutSync,
+  applyStepDelta,
+  applyStatRewards,
+  revertStatRewards,
+  resolveTaskStatRewards,
 } = require('../utils/lifetimeTracking');
+const { isRecoveryDayType } = require('../utils/workoutRoutines');
+const { saveWithRetry } = require('../utils/saveWithRetry');
+const { getProgressMap } = require('../utils/progressService');
+const { classifyModality } = require('../utils/progressiveOverload');
 
-const formatWorkoutResponse = (workout, today) => ({
-  _id: workout._id,
-  dayType: workout.dayType,
-  exercises: workout.exercises.map((ex) => ({
+const formatExercise = (ex, today, progressMap = {}) => {
+  const stepsToday = isSameDay(ex.lastStepsDate, today) ? ex.currentSteps || 0 : 0;
+  const stepTarget = ex.stepTarget || 0;
+  const isSteps = ex.trackingType === 'steps';
+  const completed = isSteps
+    ? stepsToday >= (stepTarget || 10000) &&
+      ex.completed &&
+      isSameDay(ex.lastCompletedDate, today)
+    : ex.completed && isSameDay(ex.lastCompletedDate, today);
+
+  const progress = progressMap[ex.name] || null;
+  const modality = progress?.modality || classifyModality(ex.name);
+
+  return {
     _id: ex._id,
     name: ex.name,
-    sets: ex.sets,
-    repRange: ex.repRange,
-    completed: ex.completed && isSameDay(ex.lastCompletedDate, today),
-  })),
+    sets: progress?.currentSets || ex.sets,
+    repRange: progress?.currentRepRange || ex.repRange,
+    completed,
+    trackingType: ex.trackingType || 'none',
+    stepTarget: isSteps ? stepTarget || 10000 : null,
+    currentSteps: isSteps ? stepsToday : null,
+    modality,
+    currentWeightKg: progress?.currentWeightKg ?? null,
+    nextRecommendedWeightKg: progress?.nextRecommendedWeightKg ?? null,
+    progressStage: progress?.progressStage ?? null,
+    coachNote: progress?.coachNote ?? null,
+    lastPerformance: progress?.lastPerformance ?? null,
+    bestPerformance: progress?.bestPerformance ?? null,
+  };
+};
+
+const formatWorkoutResponse = (workout, today, progressMap = {}) => ({
+  _id: workout._id,
+  dayType: workout.dayType,
+  isRecovery: isRecoveryDayType(workout.dayType),
+  exercises: workout.exercises.map((ex) => formatExercise(ex, today, progressMap)),
+  completionPercent: (() => {
+    const list = workout.exercises;
+    if (!list.length) return 0;
+    const done = list.filter((ex) => formatExercise(ex, today, progressMap).completed).length;
+    return Math.round((done / list.length) * 100);
+  })(),
 });
 
-const formatWorkoutSyncResponse = (user, workout, syncResult, today) => ({
-  workout: formatWorkoutResponse(workout, today),
+const formatWorkoutSyncResponse = (user, workout, syncResult, today, progressMap = {}) => ({
+  workout: formatWorkoutResponse(workout, today, progressMap),
   workoutFullyComplete: syncResult.workoutFullyComplete,
   badgesUnlocked: syncResult.badgesUnlocked,
   grindUpdates: syncResult.grindUpdates,
@@ -61,9 +100,12 @@ const formatTask = (task, today) => {
   return {
     _id: task._id,
     taskName: task.taskName,
-    category: task.category,
+    category: task.category === 'Professional' ? 'Productivity' : task.category,
     expReward: task.expReward,
     statModifier: task.statModifier,
+    statRewards: task.statRewards?.length
+      ? task.statRewards
+      : [{ stat: task.statModifier, amount: 1 }],
     lifetimeMetric: task.lifetimeMetric || 'none',
     defaultLogValue: task.defaultLogValue ?? 1,
     logValue: task.logValue ?? task.defaultLogValue ?? 1,
@@ -82,7 +124,7 @@ const formatTask = (task, today) => {
 
 const router = express.Router();
 
-const CATEGORY_ORDER = ['Foundation', 'Health', 'Mental', 'Professional'];
+const CATEGORY_ORDER = ['Health', 'Mental', 'Productivity', 'Professional', 'Foundation'];
 
 router.get('/', async (req, res) => {
   try {
@@ -101,11 +143,29 @@ router.get('/', async (req, res) => {
     const tasksWithStatus = tasks.map((task) => formatTask(task, today));
 
     const groupedTasks = CATEGORY_ORDER.map((category) => ({
-      category,
-      tasks: tasksWithStatus.filter((t) => t.category === category),
-    })).filter((group) => group.tasks.length > 0);
+      category: category === 'Professional' ? 'Productivity' : category,
+      tasks: tasksWithStatus.filter((t) => {
+        const cat = t.category === 'Professional' ? 'Productivity' : t.category;
+        return cat === (category === 'Professional' ? 'Productivity' : category);
+      }),
+    }))
+      .filter((group) => group.tasks.length > 0)
+      // Dedupe Productivity if both Professional and Productivity keys map
+      .reduce((acc, group) => {
+        const existing = acc.find((g) => g.category === group.category);
+        if (existing) {
+          const ids = new Set(existing.tasks.map((t) => t._id));
+          for (const t of group.tasks) {
+            if (!ids.has(t._id)) existing.tasks.push(t);
+          }
+        } else {
+          acc.push(group);
+        }
+        return acc;
+      }, []);
 
     const workout = await Workout.findOne({ dayType });
+    const progressMap = await getProgressMap();
     const todayStatus = isFrozen ? { complete: false } : await getTodayCompletionStatus();
     const possibleExp = tasksWithStatus.reduce((sum, t) => sum + t.expReward, 0);
     const earnedExp = tasksWithStatus
@@ -122,19 +182,7 @@ router.get('/', async (req, res) => {
       dayType,
       dayStatus: statusInfo,
       freezeHistory: refreshedUser.freezeHistory || [],
-      workout: workout
-        ? {
-            _id: workout._id,
-            dayType: workout.dayType,
-            exercises: workout.exercises.map((ex) => ({
-              _id: ex._id,
-              name: ex.name,
-              sets: ex.sets,
-              repRange: ex.repRange,
-              completed: ex.completed && isSameDay(ex.lastCompletedDate, today),
-            })),
-          }
-        : null,
+      workout: workout ? formatWorkoutResponse(workout, today, progressMap) : null,
       tasks: tasksWithStatus,
       groupedTasks,
       streak: {
@@ -181,21 +229,23 @@ router.post('/complete/:id', async (req, res) => {
     }
 
     const expGained = calculateExpReward(task.expReward, task.statModifier);
+    const rewards = resolveTaskStatRewards(task);
 
     task.isCompleted = true;
     task.lastCompletedDate = today;
     await task.save();
 
-    incrementStat(user, task.statModifier, 1);
+    applyStatRewards(user, rewards);
     const levelUps = applyExpAndLevelUp(user, expGained);
     const badgesUnlocked = await applyTaskLifetimeOnComplete(user, task);
     appendStatHistory(user, today);
-    await user.save();
+    await saveWithRetry(user);
 
     res.json({
       message: 'Task completed',
       task: formatTask(task, today),
       expGained,
+      statRewards: rewards,
       levelUps,
       badgesUnlocked,
       user: {
@@ -227,16 +277,17 @@ router.post('/uncomplete/:id', async (req, res) => {
     }
 
     const expLost = calculateExpReward(task.expReward, task.statModifier);
+    const rewards = resolveTaskStatRewards(task);
 
     task.isCompleted = false;
     task.lastCompletedDate = null;
     await revertTaskLifetimeOnUncomplete(user, task);
     await task.save();
 
-    decrementStat(user, task.statModifier, 1);
+    revertStatRewards(user, rewards);
     const levelDowns = revertExpAndLevelDown(user, expLost);
     appendStatHistory(user, today);
-    await user.save();
+    await saveWithRetry(user);
 
     res.json({
       message: 'Task reverted',
@@ -267,6 +318,12 @@ router.post('/workout/:workoutId/exercise/:exerciseId', async (req, res) => {
     const exercise = workout.exercises.id(req.params.exerciseId);
     if (!exercise) return res.status(404).json({ message: 'Exercise not found' });
 
+    if (exercise.trackingType === 'steps') {
+      return res.status(400).json({
+        message: 'Use step tracking buttons for this exercise',
+      });
+    }
+
     const today = new Date();
     const completedToday =
       exercise.completed && isSameDay(exercise.lastCompletedDate, today);
@@ -276,9 +333,44 @@ router.post('/workout/:workoutId/exercise/:exerciseId', async (req, res) => {
     await workout.save();
 
     const syncResult = await processWorkoutSync(user, workout);
-    await user.save();
+    await saveWithRetry(user);
+    const progressMap = await getProgressMap();
 
-    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today));
+    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap));
+  } catch (error) {
+    const code = error.statusCode || 500;
+    res.status(code).json({ message: error.message });
+  }
+});
+
+router.post('/workout/:workoutId/exercise/:exerciseId/steps', async (req, res) => {
+  try {
+    const user = await getPlayer();
+    assertDayNotFrozen(user);
+
+    const delta = Number(req.body?.delta);
+    if (!Number.isFinite(delta) || delta === 0) {
+      return res.status(400).json({ message: 'delta must be a non-zero number' });
+    }
+
+    const workout = await Workout.findById(req.params.workoutId);
+    if (!workout) return res.status(404).json({ message: 'Workout not found' });
+
+    const exercise = workout.exercises.id(req.params.exerciseId);
+    if (!exercise) return res.status(404).json({ message: 'Exercise not found' });
+
+    const today = new Date();
+    const stepResult = await applyStepDelta(user, exercise, delta, today);
+    await workout.save();
+
+    const syncResult = await processWorkoutSync(user, workout);
+    await saveWithRetry(user);
+    const progressMap = await getProgressMap();
+
+    res.json({
+      ...formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap),
+      stepResult,
+    });
   } catch (error) {
     const code = error.statusCode || 500;
     res.status(code).json({ message: error.message });
@@ -295,15 +387,25 @@ router.post('/workout/:workoutId/complete-all', async (req, res) => {
 
     const today = new Date();
     for (const exercise of workout.exercises) {
-      exercise.completed = true;
-      exercise.lastCompletedDate = today;
+      if (exercise.trackingType === 'steps') {
+        const target = exercise.stepTarget || 10000;
+        const stepsToday = isSameDay(exercise.lastStepsDate, today)
+          ? exercise.currentSteps || 0
+          : 0;
+        if (stepsToday < target) continue; // don't auto-fill steps
+        exercise.completed = true;
+        exercise.lastCompletedDate = today;
+      } else {
+        exercise.completed = true;
+        exercise.lastCompletedDate = today;
+      }
     }
     await workout.save();
 
     const syncResult = await processWorkoutSync(user, workout);
-    await user.save();
-
-    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today));
+    await saveWithRetry(user);
+    const progressMap = await getProgressMap();
+    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap));
   } catch (error) {
     const code = error.statusCode || 500;
     res.status(code).json({ message: error.message });
@@ -320,15 +422,21 @@ router.post('/workout/:workoutId/clear-all', async (req, res) => {
 
     const today = new Date();
     for (const exercise of workout.exercises) {
+      if (exercise.trackingType === 'steps' && isSameDay(exercise.lastStepsDate, today)) {
+        const prev = exercise.currentSteps || 0;
+        if (prev > 0) {
+          await applyStepDelta(user, exercise, -prev, today);
+        }
+      }
       exercise.completed = false;
       exercise.lastCompletedDate = null;
     }
     await workout.save();
 
     const syncResult = await processWorkoutSync(user, workout);
-    await user.save();
-
-    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today));
+    await saveWithRetry(user);
+    const progressMap = await getProgressMap();
+    res.json(formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap));
   } catch (error) {
     const code = error.statusCode || 500;
     res.status(code).json({ message: error.message });
@@ -357,7 +465,7 @@ router.patch('/log-value/:id', async (req, res) => {
     task.logValue = parsed;
     const badgesUnlocked = await adjustTaskLifetimeLogValue(user, task, parsed, oldValue);
     await task.save();
-    await user.save();
+    await saveWithRetry(user);
 
     const today = new Date();
     res.json({

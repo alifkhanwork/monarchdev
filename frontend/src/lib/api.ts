@@ -1,12 +1,15 @@
 import type {
+  CoachFeedback,
   CompleteTaskResponse,
   DailyTask,
   DailiesResponse,
   DayStatusInfo,
   GrindResponse,
   Milestone,
+  ProgressAnalytics,
   UncompleteTaskResponse,
   User,
+  WorkoutSession,
   WorkoutSyncResponse,
 } from '@/types';
 
@@ -79,6 +82,12 @@ export const api = {
       method: 'POST',
     }),
 
+  addExerciseSteps: (workoutId: string, exerciseId: string, delta: number) =>
+    fetchAPI<WorkoutSyncResponse & { stepResult?: { currentSteps: number; stepTarget: number } }>(
+      `/api/dailies/workout/${workoutId}/exercise/${exerciseId}/steps`,
+      { method: 'POST', body: JSON.stringify({ delta }) }
+    ),
+
   getMilestones: () => fetchAPI<Milestone[]>('/api/milestones'),
 
   toggleMilestoneSubtask: (milestoneId: string, subtaskId: string) =>
@@ -89,22 +98,60 @@ export const api = {
   getWeeklyGrind: () => fetchAPI<GrindResponse>('/api/weekly'),
 
   updateWeeklyProgress: (id: string, delta: number) =>
-    fetchAPI<{ _id: string; currentProgress: number; progressPercent: number }>(
-      `/api/weekly/${id}/progress`,
-      { method: 'POST', body: JSON.stringify({ delta }) }
-    ),
+    fetchAPI<{
+      _id: string;
+      currentProgress: number;
+      progressPercent: number;
+      rewardClaim?: { expReward: number; title?: string; levelUps?: number[] };
+    }>(`/api/weekly/${id}/progress`, {
+      method: 'POST',
+      body: JSON.stringify({ delta }),
+    }),
 
   getMonthlyGrind: () => fetchAPI<GrindResponse>('/api/monthly'),
 
   updateMonthlyProgress: (id: string, delta: number) =>
-    fetchAPI<{ _id: string; currentProgress: number; progressPercent: number }>(
-      `/api/monthly/${id}/progress`,
-      { method: 'POST', body: JSON.stringify({ delta }) }
-    ),
+    fetchAPI<{
+      _id: string;
+      currentProgress: number;
+      progressPercent: number;
+      rewardClaim?: { expReward: number; title?: string; levelUps?: number[] };
+    }>(`/api/monthly/${id}/progress`, {
+      method: 'POST',
+      body: JSON.stringify({ delta }),
+    }),
 
   updateTaskLogValue: (id: string, value: number) =>
     fetchAPI<{ task: DailyTask; badgesUnlocked: { id: string; name: string }[] }>(
       `/api/dailies/log-value/${id}`,
       { method: 'PATCH', body: JSON.stringify({ value }) }
     ),
+
+  logWorkoutSession: (body: {
+    dayType: string;
+    workoutId?: string;
+    durationMin?: number;
+    exercises: {
+      exerciseName: string;
+      weightKg?: number | null;
+      targetSets: number;
+      targetRepRange: string;
+      sets: { setNumber: number; reps: number; weightKg?: number | null }[];
+    }[];
+  }) =>
+    fetchAPI<{
+      message: string;
+      session: WorkoutSession;
+      coach: CoachFeedback;
+      trainingWeek: number;
+      beginnerPhase: boolean;
+    }>('/api/progress/log-session', { method: 'POST', body: JSON.stringify(body) }),
+
+  getProgressAnalytics: () => fetchAPI<ProgressAnalytics>('/api/progress/analytics'),
+
+  getWorkoutHistory: (limit = 30) =>
+    fetchAPI<{ sessions: WorkoutSession[] }>(`/api/progress/history?limit=${limit}`),
+
+  getExerciseProgress: () =>
+    fetchAPI<{ exercises: unknown[]; availableWeights: number[] }>('/api/progress/exercises'),
 };

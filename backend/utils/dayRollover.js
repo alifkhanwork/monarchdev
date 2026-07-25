@@ -10,7 +10,7 @@ const {
   logFreezeDay,
   ensureTodayStatus,
 } = require('./dayStatus');
-const { resetTaskLogValues } = require('./lifetimeTracking');
+const { resetTaskLogValues, resetWorkoutStepProgress } = require('./lifetimeTracking');
 
 const evaluateDayComplete = async (dayDate) => {
   const tasks = await DailyTask.find();
@@ -105,6 +105,7 @@ const processDayRollover = async (user) => {
 
     await resetDailyProgress();
     await resetTaskLogValues();
+    await resetWorkoutStepProgress();
     user.lastWorkoutCountedDate = null;
     user.lastProcessedDate = today;
     user.todayDayStatus = { date: getTodayKey(today), status: 'normal' };

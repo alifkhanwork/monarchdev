@@ -31,6 +31,8 @@ interface DailyGrindTabProps {
   onToggleExercise: (workoutId: string, exerciseId: string) => void;
   onCompleteAllExercises: (workoutId: string) => void;
   onClearAllExercises: (workoutId: string) => void;
+  onAddSteps?: (workoutId: string, exerciseId: string, delta: number) => void;
+  onLogPerformance?: () => void;
   workoutQuest: DailyTask | null;
   workoutSyncing: boolean;
   onDismissPenalty: () => void;
@@ -54,6 +56,8 @@ export default function DailyGrindTab({
   onToggleExercise,
   onCompleteAllExercises,
   onClearAllExercises,
+  onAddSteps,
+  onLogPerformance,
   workoutQuest,
   workoutSyncing,
   onDismissPenalty,
@@ -138,6 +142,8 @@ export default function DailyGrindTab({
         onToggleExercise={onToggleExercise}
         onCompleteAllExercises={onCompleteAllExercises}
         onClearAllExercises={onClearAllExercises}
+        onAddSteps={onAddSteps}
+        onLogPerformance={onLogPerformance}
         workoutQuest={workoutQuest}
         workoutSyncing={workoutSyncing}
         onLogValueChange={onLogValueChange}

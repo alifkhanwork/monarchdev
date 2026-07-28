@@ -186,30 +186,28 @@ export default function DailyGrindTab({
         weightUnit={user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'}
       />
 
-      <section className="glass-panel !py-2.5 space-y-2">
-        <CollapsibleCategoryHeader
-          title="Custom Quests"
-          icon="◇"
-          done={customDone}
-          total={customQuests.length}
-          collapsed={customCollapsed}
-          onToggle={() => toggleCustom(CUSTOM_SECTION)}
-          trailing={
-            !showAddForm && !editingQuest ? (
-              <button
-                type="button"
-                className="journal-action-btn"
-                onClick={() => setShowAddForm(true)}
-              >
-                + Add quest
-              </button>
-            ) : undefined
-          }
-        />
+      <section className="glass-panel !p-3 space-y-2 border-cyan-500/25 bg-slate-900/60">
+        <div className="flex items-center justify-between gap-2 pb-2 border-b border-cyan-500/15 mb-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+            <span aria-hidden className="text-cyan-400">◇</span>
+            <span className="font-semibold text-white text-sm">Custom Quests</span>
+            <span className="text-slate-400 font-mono-data text-xs normal-case tracking-normal">
+              ({customDone}/{customQuests.length} cleared)
+              {customQuests.length > 0 && customDone === customQuests.length ? ' · done' : ''}
+            </span>
+          </div>
+          {!showAddForm && !editingQuest && (
+            <button
+              type="button"
+              className="journal-action-btn shrink-0"
+              onClick={() => setShowAddForm(true)}
+            >
+              + Add quest
+            </button>
+          )}
+        </div>
 
-        {!customCollapsed && (
-          <>
-            <p className="text-meta px-0.5">One-offs for today — local to this Hunter node</p>
+        <p className="text-meta px-0.5">One-offs for today — local to this Hunter node</p>
 
             {(showAddForm || editingQuest) && (
               <CustomQuestForm
@@ -302,8 +300,6 @@ export default function DailyGrindTab({
                 );
               })}
             </ul>
-          </>
-        )}
       </section>
 
       {!journalOpen && (

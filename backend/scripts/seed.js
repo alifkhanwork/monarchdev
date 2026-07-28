@@ -143,15 +143,15 @@ const seedData = async () => {
       statRewards: [{ stat: 'perception', amount: 1 }],
     },
     {
-      taskName: 'Work on portfolio / job apps',
-      category: 'Productivity',
+      taskName: 'Work for Company',
+      category: 'Mental',
       expReward: 50,
       statModifier: 'intelligence',
       statRewards: [{ stat: 'intelligence', amount: 1 }],
     },
     {
       taskName: "Complete Today's Most Important Task",
-      category: 'Productivity',
+      category: 'Health',
       expReward: 40,
       statModifier: 'intelligence',
       statRewards: [{ stat: 'intelligence', amount: 1 }],
@@ -167,6 +167,12 @@ const seedData = async () => {
       ],
     },
   ];
+
+  // Migration: rename existing "Work on portfolio / job apps" to "Work for Company"
+  await DailyTask.updateMany(
+    { taskName: 'Work on portfolio / job apps' },
+    { $set: { taskName: 'Work for Company', category: 'Mental' } }
+  );
 
   const keepNames = new Set(CANONICAL_DAILIES.map((t) => t.taskName));
   const removed = await DailyTask.deleteMany({ taskName: { $nin: [...keepNames] } });

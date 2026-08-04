@@ -6,7 +6,7 @@ const {
   getMonthDateKeys,
 } = require('./dateHelpers');
 
-const roundHours = (n) => Math.round(Math.max(0, Number(n) || 0) * 100) / 100;
+const roundHours = (n) => Math.round(Math.max(0, Number(n) || 0) * 60) / 60;
 const roundLiters = (n) => Math.round(Math.max(0, Number(n) || 0) * 100) / 100;
 
 const upsertDay = async (dateKey, setFields) => {

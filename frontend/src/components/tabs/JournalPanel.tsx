@@ -19,6 +19,75 @@ interface JournalPanelProps {
   onClose?: () => void;
 }
 
+type JournalCategory = {
+  key: string;
+  label: string;
+  placeholder: string;
+};
+
+const JOURNAL_CATEGORIES: JournalCategory[] = [
+  { key: 'learn', label: 'What did you learn today?', placeholder: 'Concepts, tools, insights...' },
+  { key: 'npm', label: 'What npm package did you make today?', placeholder: 'Package name, what it does...' },
+  { key: 'workout', label: 'How was the workout for today?', placeholder: 'Energy, PRs, recovery notes...' },
+  { key: 'feel', label: 'How do you feel so far?', placeholder: 'Mood, energy, focus...' },
+];
+
+const CATEGORY_HEADER = '## ';
+const CATEGORY_DIVIDER = '\n\n';
+
+function splitJournalEntry(text: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const category of JOURNAL_CATEGORIES) {
+    result[category.key] = '';
+  }
+
+  if (!text.trim()) return result;
+
+  const parts = text.split(CATEGORY_HEADER);
+  const hasHeaders = parts.length > 1 && JOURNAL_CATEGORIES.some((c) =>
+    parts.some((p) => p.startsWith(c.label))
+  );
+
+  if (!hasHeaders) {
+    result.learn = text.trim();
+    return result;
+  }
+
+  let currentKey: string | null = null;
+  let buffer = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const matchedCategory = JOURNAL_CATEGORIES.find((c) =>
+      part.startsWith(c.label)
+    );
+
+    if (matchedCategory) {
+      if (currentKey && buffer.trim()) {
+        result[currentKey] = buffer.trim();
+      }
+      currentKey = matchedCategory.key;
+      buffer = part.slice(matchedCategory.label.length).trim();
+    } else if (currentKey) {
+      buffer = part;
+    }
+  }
+
+  if (currentKey && buffer.trim()) {
+    result[currentKey] = buffer.trim();
+  }
+
+  return result;
+}
+
+function combineJournalEntry(categories: Record<string, string>): string {
+  return JOURNAL_CATEGORIES.map((c) => {
+    const value = categories[c.key]?.trim() || '';
+    if (!value) return '';
+    return `${CATEGORY_HEADER}${c.label}${CATEGORY_DIVIDER}${value}`;
+  }).filter(Boolean).join(CATEGORY_DIVIDER);
+}
+
 export default function JournalPanel({
   journalEntry,
   onSave,
@@ -31,15 +100,16 @@ export default function JournalPanel({
   variant = 'inline',
   onClose,
 }: JournalPanelProps) {
-  const [draft, setDraft] = useState(journalEntry);
+  const categories = useRef(splitJournalEntry(journalEntry));
+  const [drafts, setDrafts] = useState<Record<string, string>>(categories.current);
   const [isEditing, setIsEditing] = useState(() => !journalEntry.trim());
   const [expanded, setExpanded] = useState(() => Boolean(journalEntry.trim()) || variant === 'drawer');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const showingHistorical = viewDateLabel && !isToday;
   const isDrawer = variant === 'drawer';
 
   useEffect(() => {
-    setDraft(journalEntry);
+    categories.current = splitJournalEntry(journalEntry);
+    setDrafts(categories.current);
     setIsEditing(!journalEntry.trim());
     if (journalEntry.trim()) setExpanded(true);
   }, [journalEntry]);
@@ -58,16 +128,9 @@ export default function JournalPanel({
     };
   }, [isDrawer, onClose]);
 
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el || !expanded) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, 104), 360)}px`;
-  }, [draft, expanded, isEditing]);
-
-  const charCount = draft.trim().length;
+  const charCount = Object.values(drafts).reduce((sum, v) => sum + v.trim().length, 0);
   const canSave = charCount >= LIMITS.journalMinChars && charCount <= LIMITS.journalMaxChars;
-  const isDirty = draft !== journalEntry;
+  const isDirty = combineJournalEntry(drafts) !== journalEntry;
   const hasSavedEntry = journalEntry.trim().length >= LIMITS.journalMinChars;
   const overMax = charCount > LIMITS.journalMaxChars;
   const prompt = getJournalPromptForDate(dateKey || getTodayKey());
@@ -75,14 +138,19 @@ export default function JournalPanel({
     ? `Journal for ${viewDateLabel}: ${prompt}`
     : prompt;
 
+  const handleCategoryChange = (key: string, value: string) => {
+    setDrafts((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
-    await onSave(draft);
+    const combined = combineJournalEntry(drafts);
+    await onSave(combined);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setDraft(journalEntry);
+    setDrafts(categories.current);
     setIsEditing(false);
   };
 
@@ -134,16 +202,23 @@ export default function JournalPanel({
           Write today&apos;s entry — {journalPrompt}
         </button>
       ) : (
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value.slice(0, LIMITS.journalMaxChars + 50))}
-          readOnly={!isEditing}
-          maxLength={LIMITS.journalMaxChars + 50}
-          placeholder={journalPrompt}
-          className={`journal-textarea mt-2 ${!isEditing ? 'opacity-90 cursor-default' : ''}`}
-          rows={4}
-        />
+        <div className="mt-2 space-y-2.5">
+          {JOURNAL_CATEGORIES.map((category) => (
+            <div key={category.key}>
+              <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1 block">
+                {category.label}
+              </label>
+              <textarea
+                value={drafts[category.key] || ''}
+                onChange={(e) => handleCategoryChange(category.key, e.target.value)}
+                readOnly={!isEditing}
+                placeholder={category.placeholder}
+                className={`journal-textarea ${!isEditing ? 'opacity-90 cursor-default' : ''}`}
+                rows={2}
+              />
+            </div>
+          ))}
+        </div>
       )}
 
       {expanded && (

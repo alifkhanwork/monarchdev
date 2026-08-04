@@ -111,13 +111,15 @@ const formatTask = (task, today) => {
     defaultLogValue: task.defaultLogValue ?? 1,
     logValue: task.logValue ?? task.defaultLogValue ?? 1,
     logUnit:
-      task.lifetimeMetric === 'study_hours'
-        ? 'hr'
-        : task.lifetimeMetric === 'water_liters'
-          ? 'L'
-          : task.lifetimeMetric === 'distance_km'
-            ? 'km'
-            : null,
+      task.lifetimeMetric === 'study_hours' && task.taskName.toLowerCase().includes('10 min')
+        ? 'min'
+        : task.lifetimeMetric === 'study_hours'
+          ? 'hr'
+          : task.lifetimeMetric === 'water_liters'
+            ? 'L'
+            : task.lifetimeMetric === 'distance_km'
+              ? 'km'
+              : null,
     isCompleted: completedToday,
     lastCompletedDate: task.lastCompletedDate,
   };

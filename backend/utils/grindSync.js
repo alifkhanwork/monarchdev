@@ -52,7 +52,7 @@ const resolveProgress = (quest, derived, eliteClearedCount = 0) => {
     case TRACKING.WORKOUT:
       return derived.workouts;
     case TRACKING.STUDY_HOURS:
-      return derived.studyHours;
+      return quest.unit === 'min' ? Math.round(derived.studyHours * 60) : derived.studyHours;
     case TRACKING.STEPS:
       return derived.steps;
     case TRACKING.CARDIO:

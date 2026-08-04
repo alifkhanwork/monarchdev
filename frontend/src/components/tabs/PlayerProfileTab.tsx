@@ -80,6 +80,7 @@ export default function PlayerProfileTab({
   const [selectedDate, setSelectedDate] = useState(getTodayKey);
   const [journalEntry, setJournalEntry] = useState('');
   const [journalSaving, setJournalSaving] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<ChartPanel>('performance');
   const [subTab, setSubTab] = useState<ProfileSubTab>('overview');
   const [exportingImage, setExportingImage] = useState(false);
@@ -287,11 +288,10 @@ export default function PlayerProfileTab({
               key={tab.id}
               type="button"
               onClick={() => selectSubTab(tab.id)}
-              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-all min-h-[36px] ${
-                subTab === tab.id
+              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded transition-all min-h-[36px] ${subTab === tab.id
                   ? 'bg-cyan-500/20 text-neon-teal'
                   : 'text-slate-500 hover:text-slate-300'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -314,22 +314,20 @@ export default function PlayerProfileTab({
                 <button
                   type="button"
                   onClick={() => setActivePanel('performance')}
-                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
-                    activePanel === 'performance'
+                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${activePanel === 'performance'
                       ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
                       : 'border-transparent text-slate-400 hover:text-slate-300'
-                  }`}
+                    }`}
                 >
                   Performance Graph
                 </button>
                 <button
                   type="button"
                   onClick={() => setActivePanel('attributes')}
-                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${
-                    activePanel === 'attributes'
+                  className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all min-h-[36px] ${activePanel === 'attributes'
                       ? 'border-neon-teal/50 bg-cyan-500/15 text-neon-teal'
                       : 'border-transparent text-slate-400 hover:text-slate-300'
-                  }`}
+                    }`}
                 >
                   Detailed Attributes
                 </button>
@@ -374,24 +372,39 @@ export default function PlayerProfileTab({
           <InsightsSection user={user} />
 
           <SectionErrorBoundary label="Streak Heatmap">
-          <StreakCalendar
-            dayCompletionLog={user.dayCompletionLog || []}
-            currentStreak={user.streak.current}
-            bestStreak={Math.max(user.streak.best, user.streak.current)}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            weekStartsOn={user.settings?.weekStartsOn === 0 ? 0 : 1}
-          />
+            <StreakCalendar
+              dayCompletionLog={user.dayCompletionLog || []}
+              currentStreak={user.streak.current}
+              bestStreak={Math.max(user.streak.best, user.streak.current)}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              weekStartsOn={user.settings?.weekStartsOn === 0 ? 0 : 1}
+            />
           </SectionErrorBoundary>
 
-          <JournalPanel
-            journalEntry={journalEntry}
-            onSave={handleJournalSave}
-            viewDateLabel={formatJournalDateLabel(selectedDate)}
-            dateKey={selectedDate}
-            isToday={selectedDate === getTodayKey()}
-            isSaving={journalSaving}
-          />
+          {!journalOpen && (
+            <button
+              type="button"
+              className="journal-fab"
+              onClick={() => setJournalOpen(true)}
+            >
+              <span aria-hidden>📓</span>
+              <span>Journal</span>
+            </button>
+          )}
+
+          {journalOpen && (
+            <JournalPanel
+              variant="drawer"
+              journalEntry={journalEntry}
+              onSave={handleJournalSave}
+              viewDateLabel={formatJournalDateLabel(selectedDate)}
+              dateKey={selectedDate}
+              isToday={selectedDate === getTodayKey()}
+              isSaving={journalSaving}
+              onClose={() => setJournalOpen(false)}
+            />
+          )}
         </div>
       ) : subTab === 'diary' ? (
         <SectionErrorBoundary label="Hunter Diary">
@@ -412,10 +425,10 @@ export default function PlayerProfileTab({
           )}
 
           <SectionErrorBoundary label="Training History">
-          <TrainingProgressSection
-            onGoTrain={onGoTrain}
-            weightUnit={(user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg') as WeightUnit}
-          />
+            <TrainingProgressSection
+              onGoTrain={onGoTrain}
+              weightUnit={(user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg') as WeightUnit}
+            />
           </SectionErrorBoundary>
         </div>
       )}

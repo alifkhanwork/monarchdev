@@ -61,17 +61,20 @@ function QuestLogStepper({
   disabled?: boolean;
   onCommit: (taskId: string, value: number) => void;
 }) {
-  const step = task.logUnit === 'hr' ? 0.25 : 1;
+  const isStudyMin = task.lifetimeMetric === 'study_hours' && task.taskName.toLowerCase().includes('10 min');
+  const step = isStudyMin ? 1/60 : (task.logUnit === 'hr' ? 0.25 : 1);
   const max =
     task.lifetimeMetric === 'water_liters'
       ? 20
-      : task.lifetimeMetric === 'study_hours'
-        ? 16
-        : task.lifetimeMetric === 'distance_km'
-          ? 200
-          : task.lifetimeMetric === 'steps'
-            ? 100_000
-            : 10_000;
+      : isStudyMin
+        ? 120
+        : task.lifetimeMetric === 'study_hours'
+          ? 16
+          : task.lifetimeMetric === 'distance_km'
+            ? 200
+            : task.lifetimeMetric === 'steps'
+              ? 100_000
+              : 10_000;
 
   const bump = (dir: 1 | -1) => {
     const next = Math.max(

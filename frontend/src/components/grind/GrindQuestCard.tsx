@@ -18,6 +18,9 @@ const CATEGORY_STYLES: Record<string, string> = {
 
 function formatProgress(value: number, quest: GrindQuest) {
   const src = quest.trackingSource;
+  if (src === 'study_hours' && quest.unit === 'min') {
+    return String(Math.round(value * 60));
+  }
   if (src === 'study_hours' || src === 'water') {
     const rounded = Math.round(value * 100) / 100;
     return String(rounded);
@@ -31,6 +34,9 @@ function formatProgress(value: number, quest: GrindQuest) {
 function formatTarget(quest: GrindQuest) {
   if (quest.trackingSource === 'steps' || quest.targetCount >= 1000) {
     return quest.targetCount.toLocaleString();
+  }
+  if (quest.unit === 'min') {
+    return String(Math.round(quest.targetCount * 60));
   }
   return String(quest.targetCount);
 }

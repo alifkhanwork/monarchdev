@@ -119,14 +119,14 @@ const seedData = async () => {
       statRewards: [{ stat: 'vitality', amount: 1 }],
     },
     {
-      taskName: 'Study / skill practice (1 hr)',
+      taskName: 'Study / skill practice (10 mins)',
       category: 'Mental',
       expReward: 45,
       statModifier: 'intelligence',
       statRewards: [{ stat: 'intelligence', amount: 2 }],
       lifetimeMetric: 'study_hours',
-      defaultLogValue: 1,
-      logValue: 1,
+      defaultLogValue: 1 / 6,
+      logValue: 1 / 6,
     },
     {
       taskName: 'End of day journal entry',
@@ -136,11 +136,11 @@ const seedData = async () => {
       statRewards: [{ stat: 'perception', amount: 1 }],
     },
     {
-      taskName: 'Read 10 Pages OR Learn for 15 Minutes',
+      taskName: 'Make 1 useful npm package per day',
       category: 'Mental',
-      expReward: 30,
-      statModifier: 'perception',
-      statRewards: [{ stat: 'perception', amount: 1 }],
+      expReward: 50,
+      statModifier: 'intelligence',
+      statRewards: [{ stat: 'intelligence', amount: 2 }],
     },
     {
       taskName: 'Work for Company',

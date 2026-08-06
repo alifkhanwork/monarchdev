@@ -20,6 +20,7 @@ export default function CalendarDayDetailPanel({
   onClose,
   onToggleStatus,
   onDeleteTask,
+  onEditTask,
   onAddTaskForDate,
 }: CalendarDayDetailPanelProps) {
   const [deletingTask, setDeletingTask] = useState<AcademyTask | null>(null);

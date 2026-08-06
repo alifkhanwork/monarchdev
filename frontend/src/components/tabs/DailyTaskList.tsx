@@ -42,7 +42,6 @@ const DAY_TYPE_LABELS: Record<string, string> = {
 
 const WORKOUT_DAILY_TASK_NAME = 'Complete workout of the day';
 const STEP_DELTAS = [500, 1000, 2500];
-const COLLAPSE_KEY = 'the-system-daily-collapse';
 
 const STAT_SHORT: Record<string, string> = {
   strength: 'STR',

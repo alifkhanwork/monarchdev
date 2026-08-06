@@ -4,7 +4,6 @@ import CalendarDayDetailPanel from './CalendarDayDetailPanel';
 
 interface AcademyCalendarViewProps {
   tasks: AcademyTask[];
-  subjects: Subject[];
   onToggleTaskStatus: (taskId: string, currentStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask?: (task: AcademyTask) => void;
@@ -15,7 +14,6 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AcademyCalendarView({
   tasks,
-  subjects: _subjects,
   onToggleTaskStatus,
   onDeleteTask,
   onEditTask,

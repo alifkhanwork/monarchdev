@@ -76,10 +76,11 @@ export default function WorkoutPerformanceModal({
         (ex.modality === 'dumbbell' ? 10 : null);
       const max = parseMaxReps(ex.repRange);
       const last = ex.lastPerformance?.sets;
+      const totalSetsCount = 5; // Matches the 5 sets (2 Warmups + 3 Working sets) on quest log
       r[ex._id] =
-        last && last.length === ex.sets
+        last && last.length === totalSetsCount
           ? [...last]
-          : Array.from({ length: ex.sets }, () => Math.max(1, Math.floor(max * 0.8)));
+          : Array.from({ length: totalSetsCount }, () => Math.max(1, Math.floor(max * 0.8)));
     }
     setWeights(w);
     setReps(r);
@@ -115,9 +116,9 @@ export default function WorkoutPerformanceModal({
     const exercises: LoggedExercisePayload[] = loggable.map((ex) => ({
       exerciseName: ex.name,
       weightKg: weights[ex._id] ?? null,
-      targetSets: ex.sets,
+      targetSets: 5,
       targetRepRange: ex.repRange,
-      sets: (reps[ex._id] || []).map((rep, i) => ({
+      sets: (reps[ex._id] || [8, 8, 8, 8, 8]).map((rep, i) => ({
         setNumber: i + 1,
         reps: Math.max(LIMITS.repsMin, Math.min(LIMITS.repsMax, rep)),
         weightKg: weights[ex._id] ?? null,
@@ -175,7 +176,7 @@ export default function WorkoutPerformanceModal({
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-white truncate">{ex.name}</p>
                   <p className="text-[10px] text-slate-500 font-mono-data">
-                    Target {ex.sets}×{ex.repRange}
+                    Target 5×{ex.repRange}
                     {ex.coachNote ? ` · ${ex.coachNote}` : ''}
                   </p>
                 </div>
@@ -185,7 +186,7 @@ export default function WorkoutPerformanceModal({
                     onChange={(e) =>
                       setWeights((prev) => ({ ...prev, [ex._id]: Number(e.target.value) }))
                     }
-                    className="text-[11px] bg-slate-950/80 border border-cyan-500/30 rounded px-2 py-1 text-neon-teal font-mono-data"
+                    className="text-[11px] bg-slate-950/80 border border-cyan-500/30 rounded px-2 py-1 text-neon-teal font-mono-data shrink-0"
                   >
                     {AVAILABLE_WEIGHTS_KG.map((w) => (
                       <option key={w} value={w}>
@@ -195,9 +196,9 @@ export default function WorkoutPerformanceModal({
                   </select>
                 )}
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {(reps[ex._id] || []).map((rep, idx) => (
-                  <label key={idx} className="text-[9px] text-slate-500 uppercase tracking-wider">
+                  <label key={idx} className="text-[9px] text-slate-500 uppercase tracking-wider text-center block">
                     Set {idx + 1}
                     <input
                       type="number"
@@ -205,7 +206,7 @@ export default function WorkoutPerformanceModal({
                       max={LIMITS.repsMax}
                       value={rep}
                       onChange={(e) => setRep(ex._id, idx, Number(e.target.value))}
-                      className="mt-0.5 w-full bg-slate-950/70 border border-cyan-500/20 rounded px-1.5 py-1 text-sm text-center text-white font-mono-data"
+                      className="mt-0.5 w-full bg-slate-950/70 border border-cyan-500/20 rounded px-1 py-1 text-xs text-center text-white font-mono-data"
                     />
                   </label>
                 ))}

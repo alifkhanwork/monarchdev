@@ -629,34 +629,17 @@ export default function DailyTaskList({
                               );
                             }
 
-                            const isStrength = exercise.category !== 'Cardio' && exercise.category !== 'Recovery' && !exercise.name.toLowerCase().includes('wall sit');
-
-                            if (isStrength) {
-                              return (
-                                <StrengthExerciseRow
-                                  key={exercise._id}
-                                  exercise={exercise}
-                                  workoutId={workout._id}
-                                  isFrozen={isFrozen}
-                                  workoutSyncing={workoutSyncing}
-                                  weightUnit={weightUnit}
-                                  onToggleExercise={onToggleExercise}
-                                  onSetLogged={handleSetLogged}
-                                />
-                              );
-                            }
-
                             return (
                               <li key={exercise._id}>
                                 <button
                                   type="button"
                                   onClick={() => onToggleExercise(workout._id, exercise._id)}
                                   disabled={isFrozen || workoutSyncing}
-                                  className={`quest-item w-full text-left ${
+                                  className={`quest-item w-full text-left flex items-start justify-between gap-2 ${
                                     exercise.completed ? 'quest-item-done' : ''
                                   }`}
                                 >
-                                  <span className="quest-hit -ml-1">
+                                  <span className="quest-hit -ml-1 shrink-0 mt-0.5">
                                     <span
                                       className={`quest-checkbox ${
                                         exercise.completed ? 'quest-checkbox-done' : ''
@@ -665,21 +648,23 @@ export default function DailyTaskList({
                                       {exercise.completed && '✓'}
                                     </span>
                                   </span>
-                                  <span
-                                    className={`flex-1 min-w-0 text-[13px] sm:text-sm ${
-                                      exercise.completed ? 'line-through text-slate-500' : 'text-white'
-                                    }`}
-                                    title={exercise.name}
-                                  >
-                                    {exercise.name}
+                                  <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                                    <span
+                                      className={`break-words text-[13px] sm:text-sm font-semibold ${
+                                        exercise.completed ? 'line-through text-slate-500' : 'text-white'
+                                      }`}
+                                      title={exercise.name}
+                                    >
+                                      {exercise.name}
+                                    </span>
                                     {exercise.currentWeightKg != null && (
-                                      <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5 shrink-0 whitespace-nowrap">
+                                      <span className="text-neon-teal/80 font-mono-data text-[11px] px-1.5 py-0.5 rounded bg-slate-900 border border-cyan-500/20 shrink-0 whitespace-nowrap">
                                         {formatWeight(exercise.currentWeightKg, weightUnit)}
                                       </span>
                                     )}
-                                  </span>
-                                  <span className="quest-meta-pill">
-                                    {exercise.sets}×{exercise.repRange}
+                                  </div>
+                                  <span className="quest-meta-pill shrink-0 whitespace-nowrap">
+                                    {exercise.completed ? '5/5 sets' : '0/5 sets'}
                                   </span>
                                 </button>
                               </li>
@@ -714,7 +699,7 @@ function StrengthExerciseRow({
   workoutSyncing,
   weightUnit,
   onToggleExercise,
-  onSetLogged,
+  onSetLogged: _onSetLogged,
 }: {
   exercise: Exercise;
   workoutId: string;
@@ -722,198 +707,7 @@ function StrengthExerciseRow({
   workoutSyncing?: boolean;
   weightUnit?: WeightUnit;
   onToggleExercise: (workoutId: string, exerciseId: string) => void;
-  onSetLogged: (workoutId: string, exerciseId: string, setNumber: number, weightKg?: number | null, reps?: number) => void;
+  onSetLogged?: (workoutId: string, exerciseId: string, setNumber: number, weightKg?: number | null, reps?: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [setInputs, setSetInputs] = useState<Record<number, { weight: string; reps: string }>>(() => {
-    const init: Record<number, { weight: string; reps: string }> = {};
-    const structs = exercise.setStructure?.length ? exercise.setStructure : [];
-    for (let i = 1; i <= 5; i++) {
-      const s = structs.find((item) => item.setNumber === i);
-      const logged = exercise.loggedSets?.find((item) => item.setNumber === i);
-      init[i] = {
-        weight: logged?.weightKg != null ? String(logged.weightKg) : s?.suggestedWeight != null ? String(s.suggestedWeight) : '',
-        reps: logged?.reps != null ? String(logged.reps) : s?.targetReps ? String(s.targetReps) : '10',
-      };
-    }
-    return init;
-  });
-
-  const loggedSets = exercise.loggedSets || [];
-  const completedSetCount = loggedSets.filter((s) => s.completed).length;
-  const isAllDone = exercise.completed || completedSetCount >= 5;
-
-  const handleLogSet = (setNumber: number) => {
-    const inp = setInputs[setNumber] || { weight: '', reps: '10' };
-    const w = inp.weight ? Number(inp.weight) : null;
-    const r = inp.reps ? parseInt(inp.reps.replace(/\D/g, '') || '10', 10) : 10;
-
-    onSetLogged(workoutId, exercise._id, setNumber, w, r);
-
-    // Auto-focus next unlogged set
-    const nextUnlogged = setNumber + 1;
-    if (nextUnlogged <= 5) {
-      setTimeout(() => {
-        const nextEl = document.getElementById(`set-reps-input-${exercise._id}-${nextUnlogged}`);
-        if (nextEl) nextEl.focus();
-      }, 100);
-    }
-  };
-
-  return (
-    <li className="space-y-1">
-      <div
-        className={`quest-item w-full flex-col !items-stretch !p-2.5 transition-all ${
-          isAllDone ? 'quest-item-done' : ''
-        }`}
-      >
-        {/* Row Header */}
-        <div
-          className="flex items-start justify-between gap-2 cursor-pointer select-none"
-          onClick={() => setExpanded(!expanded)}
-        >
-          <div className="flex items-start gap-2 min-w-0 flex-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExercise(workoutId, exercise._id);
-              }}
-              disabled={isFrozen || workoutSyncing}
-              className="quest-hit -ml-1 shrink-0 mt-0.5"
-            >
-              <span className={`quest-checkbox ${isAllDone ? 'quest-checkbox-done' : ''}`}>
-                {isAllDone && '✓'}
-              </span>
-            </button>
-
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1 pt-0.5">
-              <span
-                title={exercise.name}
-                className={`text-[13px] sm:text-sm font-semibold break-words ${
-                  isAllDone ? 'line-through text-slate-500' : 'text-white'
-                }`}
-              >
-                {exercise.name}
-              </span>
-
-              {exercise.currentWeightKg != null && (
-                <span className="text-neon-teal/90 font-mono-data text-[11px] px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30 shrink-0 whitespace-nowrap">
-                  {formatWeight(exercise.currentWeightKg, weightUnit)}
-                </span>
-              )}
-
-              {/* Gold PR Badge */}
-              {exercise.isPR && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/60 text-amber-300 font-bold font-mono-data text-[10px] shadow-sm shadow-amber-500/30 animate-pulse shrink-0 whitespace-nowrap">
-                  🏆 PR
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 pt-0.5">
-            <span className="px-2 py-0.5 rounded-full font-mono-data text-[10px] font-bold border border-slate-700 bg-slate-950 text-slate-300 shrink-0 whitespace-nowrap">
-              {completedSetCount}/5 sets
-            </span>
-            <span className="text-xs text-slate-400">{expanded ? '▲' : '▼'}</span>
-          </div>
-        </div>
-
-        {/* Inline Expanded Sets */}
-        {expanded && (
-          <div className="mt-2.5 pt-2.5 border-t border-slate-800 space-y-2 animate-fade-in">
-            <div className="grid grid-cols-[100px_1fr_1fr_auto] gap-2 px-2 text-[10px] uppercase font-bold text-slate-400">
-              <span>Set Type</span>
-              <span className="text-center">Weight</span>
-              <span className="text-center">Reps</span>
-              <span className="text-right">Log</span>
-            </div>
-
-            {[1, 2, 3, 4, 5].map((setNum) => {
-              const logged = loggedSets.find((s) => s.setNumber === setNum);
-              const isSetDone = logged?.completed ?? false;
-              const isWarmup = setNum <= 2;
-              const setLabel = isWarmup ? `Warmup ${setNum}` : `Working ${setNum - 2}`;
-
-              return (
-                <div
-                  key={setNum}
-                  className={`grid grid-cols-[100px_1fr_1fr_auto] items-center gap-2 p-2 rounded-lg border-l-4 border transition-all ${
-                    isWarmup ? 'border-l-slate-500' : 'border-l-cyan-400'
-                  } ${
-                    isSetDone
-                      ? 'bg-slate-950/80 border-slate-800/80 opacity-70'
-                      : 'bg-slate-900/90 border-slate-800 hover:border-cyan-500/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                        isWarmup
-                          ? 'bg-slate-800 text-slate-300'
-                          : 'bg-cyan-950 border border-cyan-500/40 text-cyan-300'
-                      }`}
-                    >
-                      {setLabel}
-                    </span>
-                  </div>
-
-                  {/* Weight Input */}
-                  <div className="flex justify-center items-center">
-                    <input
-                      type="number"
-                      step="0.5"
-                      placeholder="kg"
-                      value={setInputs[setNum]?.weight || ''}
-                      onChange={(e) =>
-                        setSetInputs((prev) => ({
-                          ...prev,
-                          [setNum]: { ...prev[setNum], weight: e.target.value },
-                        }))
-                      }
-                      className="w-16 px-2 py-1 text-xs rounded-md bg-slate-950 border border-slate-700 text-white font-mono-data text-center focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-
-                  {/* Reps Input */}
-                  <div className="flex justify-center items-center">
-                    <input
-                      id={`set-reps-input-${exercise._id}-${setNum}`}
-                      type="text"
-                      placeholder="reps"
-                      value={setInputs[setNum]?.reps || ''}
-                      onChange={(e) =>
-                        setSetInputs((prev) => ({
-                          ...prev,
-                          [setNum]: { ...prev[setNum], reps: e.target.value },
-                        }))
-                      }
-                      className="w-16 px-2 py-1 text-xs rounded-md bg-slate-950 border border-slate-700 text-white font-mono-data text-center focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-
-                  {/* Log Set Checkmark Button */}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleLogSet(setNum)}
-                      disabled={isFrozen || workoutSyncing}
-                      className={`px-3 py-1 text-xs font-bold rounded-md border transition-all ${
-                        isSetDone
-                          ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-md'
-                          : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950'
-                      }`}
-                    >
-                      {isSetDone ? '✓ Logged' : 'Log'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </li>
-  );
+  return null;
 }

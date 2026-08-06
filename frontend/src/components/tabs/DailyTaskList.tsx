@@ -5,7 +5,6 @@ import type { DailyTask, DayStatusInfo, Exercise, GroupedTasks, Workout } from '
 import DayStatusSelect from './DayStatusSelect';
 import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
 import RestTimer from '@/components/workout/RestTimer';
-import { api } from '@/lib/api';
 
 interface DailyTaskListProps {
   groupedTasks: GroupedTasks[];

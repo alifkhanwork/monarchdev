@@ -1,4 +1,5 @@
 import type {
+  AcademyTask,
   CoachFeedback,
   CompleteTaskResponse,
   DailyTask,
@@ -8,6 +9,7 @@ import type {
   Milestone,
   ProgressAnalytics,
   ShopResponse,
+  Subject,
   UncompleteTaskResponse,
   User,
   WorkoutSession,

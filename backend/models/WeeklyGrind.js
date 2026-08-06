@@ -30,4 +30,6 @@ const weeklyGrindSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+weeklyGrindSchema.index({ periodKey: 1 });
+
 module.exports = mongoose.model('WeeklyGrind', weeklyGrindSchema);

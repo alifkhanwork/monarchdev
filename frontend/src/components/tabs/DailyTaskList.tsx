@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
-import type { DailyTask, DayStatusInfo, GroupedTasks, Workout } from '@/types';
+import { useMemo, useState, useRef } from 'react';
+import type { DailyTask, DayStatusInfo, Exercise, GroupedTasks, Workout } from '@/types';
 import DayStatusSelect from './DayStatusSelect';
-import CollapsibleCategoryHeader from '@/components/quests/CollapsibleCategoryHeader';
-import { useCollapsibleSections } from '@/hooks/useCollapsibleSections';
 import { formatWeight, type WeightUnit } from '@/lib/weightUnits';
+import RestTimer from '@/components/workout/RestTimer';
+import { api } from '@/lib/api';
 
 interface DailyTaskListProps {
   groupedTasks: GroupedTasks[];
@@ -145,6 +145,76 @@ function normalizeTask(task: DailyTask): DailyTask {
   };
 }
 
+export interface ExerciseCategoryGroup {
+  category: string;
+  exercises: Exercise[];
+}
+
+const CATEGORY_DISPLAY_ORDER = [
+  'Chest',
+  'Shoulders',
+  'Triceps',
+  'Back',
+  'Biceps',
+  'Legs',
+  'Calves',
+  'Core',
+  'Cardio',
+  'Recovery',
+];
+
+export function groupExercisesByCategory(exercises: Exercise[]): ExerciseCategoryGroup[] {
+  if (!exercises || !Array.isArray(exercises)) return [];
+  const map = new Map<string, Exercise[]>();
+  for (const ex of exercises) {
+    const cat = ex.category || 'Other';
+    if (!map.has(cat)) {
+      map.set(cat, []);
+    }
+    map.get(cat)!.push(ex);
+  }
+
+  const result: ExerciseCategoryGroup[] = [];
+  for (const cat of CATEGORY_DISPLAY_ORDER) {
+    if (map.has(cat)) {
+      result.push({ category: cat, exercises: map.get(cat)! });
+      map.delete(cat);
+    }
+  }
+  for (const [cat, exList] of map.entries()) {
+    result.push({ category: cat, exercises: exList });
+  }
+  return result;
+}
+
+export function splitCategoryGroupsIntoColumns(
+  groups: ExerciseCategoryGroup[],
+  numColumns: number = 3
+): ExerciseCategoryGroup[][] {
+  if (!groups || groups.length === 0) return Array.from({ length: numColumns }, () => []);
+
+  const totalExercises = groups.reduce((sum, g) => sum + g.exercises.length, 0);
+  const targetPerCol = Math.max(1, Math.ceil(totalExercises / numColumns));
+
+  const columns: ExerciseCategoryGroup[][] = Array.from({ length: numColumns }, () => []);
+  const colHeights = new Array(numColumns).fill(0);
+
+  let colIdx = 0;
+  for (const group of groups) {
+    if (
+      colHeights[colIdx] > 0 &&
+      colHeights[colIdx] + group.exercises.length > targetPerCol + 1 &&
+      colIdx < numColumns - 1
+    ) {
+      colIdx++;
+    }
+    columns[colIdx].push(group);
+    colHeights[colIdx] += group.exercises.length;
+  }
+
+  return columns;
+}
+
 export default function DailyTaskList({
   groupedTasks,
   workout,
@@ -169,6 +239,31 @@ export default function DailyTaskList({
 }: DailyTaskListProps) {
   const isFrozen = dayStatus.isFrozen;
   const isRecovery = Boolean(workout?.isRecovery);
+  const [showRestTimer, setShowRestTimer] = useState(false);
+
+  const handleSetLogged = async (
+    workoutId: string,
+    exerciseId: string,
+    setNumber: number,
+    weightKg?: number | null,
+    reps?: number
+  ) => {
+    try {
+      const res = await api.logExerciseSet(workoutId, exerciseId, {
+        setNumber,
+        weightKg,
+        reps,
+        completed: true,
+      });
+      // Trigger rest timer for strength sets
+      setShowRestTimer(true);
+      if (res.isPR) {
+        alert('🏆 NEW PERSONAL RECORD! Gold PR Badge unlocked.');
+      }
+    } catch (e: unknown) {
+      console.error('Failed to log set:', e);
+    }
+  };
 
   const handleTaskClick = (task: DailyTask) => {
     if (isFrozen || completingId) return;
@@ -224,13 +319,7 @@ export default function DailyTaskList({
     workout?.completionPercent ??
     (workoutTotal ? Math.round((workoutDoneCount / workoutTotal) * 100) : 0);
 
-  const sectionIds = useMemo(() => ['Health', 'Mental'], []);
 
-  const { isCollapsed, toggle } = useCollapsibleSections(
-    COLLAPSE_KEY,
-    sectionIds,
-    null
-  );
 
   const renderTaskRow = (task: DailyTask) => {
     const hasLog = task.lifetimeMetric && task.lifetimeMetric !== 'none';
@@ -452,123 +541,361 @@ export default function DailyTaskList({
               </button>
             )}
 
-            <ul className="space-y-1.5">
-              {workout.exercises.map((exercise) => {
-                const isSteps = exercise.trackingType === 'steps';
-                const steps = exercise.currentSteps ?? 0;
-                const target = exercise.stepTarget ?? 10000;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start pt-1">
+              {splitCategoryGroupsIntoColumns(groupExercisesByCategory(workout.exercises), 3).map(
+                (colGroups, colIdx) => (
+                  <div key={colIdx} className="space-y-4">
+                    {colGroups.map((group) => (
+                      <div key={group.category} className="space-y-1.5">
+                        <h4 className="text-[12px] font-bold text-cyan-400 uppercase tracking-wider px-1 pt-0.5">
+                          {group.category}:
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {group.exercises.map((exercise) => {
+                            const isSteps = exercise.trackingType === 'steps';
+                            const steps = exercise.currentSteps ?? 0;
+                            const target = exercise.stepTarget ?? 10000;
 
-                if (isSteps) {
-                  return (
-                    <li key={exercise._id}>
-                      <div
-                        className={`quest-item w-full flex-col !items-stretch !gap-2 ${
-                          exercise.completed ? 'quest-item-done' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <span className="quest-hit -ml-1 pointer-events-none">
-                            <span
-                              className={`quest-checkbox ${
-                                exercise.completed ? 'quest-checkbox-done' : ''
-                              }`}
-                            >
-                              {exercise.completed && '✓'}
-                            </span>
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-[13px] sm:text-sm ${
-                                exercise.completed
-                                  ? 'line-through text-slate-500'
-                                  : 'text-white'
-                              }`}
-                            >
-                              {exercise.name}
-                            </p>
-                            <p className="text-[11px] font-mono-data text-neon-teal mt-0.5">
-                              {steps.toLocaleString()} / {target.toLocaleString()} Steps
-                            </p>
-                          </div>
-                        </div>
-                        <div className="progress-track">
-                          <div
-                            className="progress-fill"
-                            style={{
-                              width: `${Math.min(100, Math.round((steps / target) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {STEP_DELTAS.map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              disabled={isFrozen || workoutSyncing || steps >= target}
-                              onClick={() => onAddSteps?.(workout._id, exercise._id, d)}
-                              className="workout-bulk-btn"
-                            >
-                              +{d.toLocaleString()}
-                            </button>
-                          ))}
-                          {steps > 0 && (
-                            <button
-                              type="button"
-                              disabled={isFrozen || workoutSyncing}
-                              onClick={() => onAddSteps?.(workout._id, exercise._id, -500)}
-                              className="workout-bulk-btn workout-bulk-btn-muted"
-                            >
-                              −500
-                            </button>
-                          )}
-                        </div>
+                            if (isSteps) {
+                              return (
+                                <li key={exercise._id}>
+                                  <div
+                                    className={`quest-item w-full flex-col !items-stretch !gap-2 ${
+                                      exercise.completed ? 'quest-item-done' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 w-full">
+                                      <span className="quest-hit -ml-1 pointer-events-none">
+                                        <span
+                                          className={`quest-checkbox ${
+                                            exercise.completed ? 'quest-checkbox-done' : ''
+                                          }`}
+                                        >
+                                          {exercise.completed && '✓'}
+                                        </span>
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p
+                                          className={`text-[13px] sm:text-sm ${
+                                            exercise.completed
+                                              ? 'line-through text-slate-500'
+                                              : 'text-white'
+                                          }`}
+                                        >
+                                          {exercise.name}
+                                        </p>
+                                        <p className="text-[11px] font-mono-data text-neon-teal mt-0.5">
+                                          {steps.toLocaleString()} / {target.toLocaleString()} Steps
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="progress-track">
+                                      <div
+                                        className="progress-fill"
+                                        style={{
+                                          width: `${Math.min(100, Math.round((steps / target) * 100))}%`,
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {STEP_DELTAS.map((d) => (
+                                        <button
+                                          key={d}
+                                          type="button"
+                                          disabled={isFrozen || workoutSyncing || steps >= target}
+                                          onClick={() => onAddSteps?.(workout._id, exercise._id, d)}
+                                          className="workout-bulk-btn"
+                                        >
+                                          +{d.toLocaleString()}
+                                        </button>
+                                      ))}
+                                      {steps > 0 && (
+                                        <button
+                                          type="button"
+                                          disabled={isFrozen || workoutSyncing}
+                                          onClick={() => onAddSteps?.(workout._id, exercise._id, -500)}
+                                          className="workout-bulk-btn workout-bulk-btn-muted"
+                                        >
+                                          −500
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            }
+
+                            const isStrength = exercise.category !== 'Cardio' && exercise.category !== 'Recovery' && !exercise.name.toLowerCase().includes('wall sit');
+
+                            if (isStrength) {
+                              return (
+                                <StrengthExerciseRow
+                                  key={exercise._id}
+                                  exercise={exercise}
+                                  workoutId={workout._id}
+                                  isFrozen={isFrozen}
+                                  workoutSyncing={workoutSyncing}
+                                  weightUnit={weightUnit}
+                                  onToggleExercise={onToggleExercise}
+                                  onSetLogged={handleSetLogged}
+                                />
+                              );
+                            }
+
+                            return (
+                              <li key={exercise._id}>
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleExercise(workout._id, exercise._id)}
+                                  disabled={isFrozen || workoutSyncing}
+                                  className={`quest-item w-full text-left ${
+                                    exercise.completed ? 'quest-item-done' : ''
+                                  }`}
+                                >
+                                  <span className="quest-hit -ml-1">
+                                    <span
+                                      className={`quest-checkbox ${
+                                        exercise.completed ? 'quest-checkbox-done' : ''
+                                      }`}
+                                    >
+                                      {exercise.completed && '✓'}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
+                                      exercise.completed ? 'line-through text-slate-500' : 'text-white'
+                                    }`}
+                                  >
+                                    {exercise.name}
+                                    {exercise.currentWeightKg != null && (
+                                      <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
+                                        {formatWeight(exercise.currentWeightKg, weightUnit)}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="quest-meta-pill">
+                                    {exercise.sets}×{exercise.repRange}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
                       </div>
-                    </li>
-                  );
-                }
-
-                return (
-                  <li key={exercise._id}>
-                    <button
-                      type="button"
-                      onClick={() => onToggleExercise(workout._id, exercise._id)}
-                      disabled={isFrozen || workoutSyncing}
-                      className={`quest-item w-full text-left ${
-                        exercise.completed ? 'quest-item-done' : ''
-                      }`}
-                    >
-                      <span className="quest-hit -ml-1">
-                        <span
-                          className={`quest-checkbox ${
-                            exercise.completed ? 'quest-checkbox-done' : ''
-                          }`}
-                        >
-                          {exercise.completed && '✓'}
-                        </span>
-                      </span>
-                      <span
-                        className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
-                          exercise.completed ? 'line-through text-slate-500' : 'text-white'
-                        }`}
-                      >
-                        {exercise.name}
-                        {exercise.currentWeightKg != null && (
-                          <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
-                            {formatWeight(exercise.currentWeightKg, weightUnit)}
-                          </span>
-                        )}
-                      </span>
-                      <span className="quest-meta-pill">
-                        {exercise.sets}×{exercise.repRange}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           </div>
         </section>
       )}
+
+      {/* Floating 90s Rest Timer */}
+      {showRestTimer && (
+        <RestTimer
+          initialSeconds={90}
+          onDismiss={() => setShowRestTimer(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function StrengthExerciseRow({
+  exercise,
+  workoutId,
+  isFrozen,
+  workoutSyncing,
+  weightUnit,
+  onToggleExercise,
+  onSetLogged,
+}: {
+  exercise: Exercise;
+  workoutId: string;
+  isFrozen?: boolean;
+  workoutSyncing?: boolean;
+  weightUnit?: WeightUnit;
+  onToggleExercise: (workoutId: string, exerciseId: string) => void;
+  onSetLogged: (workoutId: string, exerciseId: string, setNumber: number, weightKg?: number | null, reps?: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [setInputs, setSetInputs] = useState<Record<number, { weight: string; reps: string }>>(() => {
+    const init: Record<number, { weight: string; reps: string }> = {};
+    const structs = exercise.setStructure?.length ? exercise.setStructure : [];
+    for (let i = 1; i <= 5; i++) {
+      const s = structs.find((item) => item.setNumber === i);
+      const logged = exercise.loggedSets?.find((item) => item.setNumber === i);
+      init[i] = {
+        weight: logged?.weightKg != null ? String(logged.weightKg) : s?.suggestedWeight != null ? String(s.suggestedWeight) : '',
+        reps: logged?.reps != null ? String(logged.reps) : s?.targetReps ? String(s.targetReps) : '10',
+      };
+    }
+    return init;
+  });
+
+  const loggedSets = exercise.loggedSets || [];
+  const completedSetCount = loggedSets.filter((s) => s.completed).length;
+  const isAllDone = exercise.completed || completedSetCount >= 5;
+
+  const handleLogSet = (setNumber: number) => {
+    const inp = setInputs[setNumber] || { weight: '', reps: '10' };
+    const w = inp.weight ? Number(inp.weight) : null;
+    const r = inp.reps ? parseInt(inp.reps.replace(/\D/g, '') || '10', 10) : 10;
+
+    onSetLogged(workoutId, exercise._id, setNumber, w, r);
+
+    // Auto-focus next unlogged set
+    const nextUnlogged = setNumber + 1;
+    if (nextUnlogged <= 5) {
+      setTimeout(() => {
+        const nextEl = document.getElementById(`set-reps-input-${exercise._id}-${nextUnlogged}`);
+        if (nextEl) nextEl.focus();
+      }, 100);
+    }
+  };
+
+  return (
+    <li className="space-y-1">
+      <div
+        className={`quest-item w-full flex-col !items-stretch !p-2.5 transition-all ${
+          isAllDone ? 'quest-item-done' : ''
+        }`}
+      >
+        {/* Row Header */}
+        <div
+          className="flex items-center justify-between gap-2 cursor-pointer select-none"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExercise(workoutId, exercise._id);
+              }}
+              disabled={isFrozen || workoutSyncing}
+              className="quest-hit -ml-1"
+            >
+              <span className={`quest-checkbox ${isAllDone ? 'quest-checkbox-done' : ''}`}>
+                {isAllDone && '✓'}
+              </span>
+            </button>
+
+            <span
+              className={`text-[13px] sm:text-sm font-semibold truncate ${
+                isAllDone ? 'line-through text-slate-500' : 'text-white'
+              }`}
+            >
+              {exercise.name}
+            </span>
+
+            {exercise.currentWeightKg != null && (
+              <span className="text-neon-teal/90 font-mono-data text-[11px] px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+                {formatWeight(exercise.currentWeightKg, weightUnit)}
+              </span>
+            )}
+
+            {/* Gold PR Badge */}
+            {exercise.isPR && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/60 text-amber-300 font-bold font-mono-data text-[10px] shadow-sm shadow-amber-500/30 animate-pulse">
+                🏆 PR
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-2 py-0.5 rounded-full font-mono-data text-[10px] font-bold border border-slate-700 bg-slate-950 text-slate-300">
+              {completedSetCount}/5 sets
+            </span>
+            <span className="text-xs text-slate-400">{expanded ? '▲' : '▼'}</span>
+          </div>
+        </div>
+
+        {/* Inline Expanded Sets */}
+        {expanded && (
+          <div className="mt-2.5 pt-2 border-t border-slate-800 space-y-2 animate-fade-in">
+            {[1, 2, 3, 4, 5].map((setNum) => {
+              const logged = loggedSets.find((s) => s.setNumber === setNum);
+              const isSetDone = logged?.completed ?? false;
+              const isWarmup = setNum <= 2;
+              const setLabel = isWarmup ? `Warm-up ${setNum}` : `Working ${setNum - 2}`;
+
+              return (
+                <div
+                  key={setNum}
+                  className={`p-2 rounded-lg border flex items-center justify-between gap-2 transition-all ${
+                    isSetDone
+                      ? 'bg-slate-950/60 border-slate-800/80 opacity-70'
+                      : 'bg-slate-900/80 border-slate-700/60 hover:border-cyan-500/30'
+                  }`}
+                >
+                  <span
+                    className={`text-[11px] font-bold font-mono-data w-24 shrink-0 ${
+                      isWarmup ? 'text-slate-400' : 'text-cyan-300'
+                    }`}
+                  >
+                    {setLabel}
+                  </span>
+
+                  <div className="flex items-center gap-2 flex-1 justify-end">
+                    {/* Weight Input */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.5"
+                        placeholder="kg"
+                        value={setInputs[setNum]?.weight || ''}
+                        onChange={(e) =>
+                          setSetInputs((prev) => ({
+                            ...prev,
+                            [setNum]: { ...prev[setNum], weight: e.target.value },
+                          }))
+                        }
+                        className="w-14 px-1.5 py-1 text-xs rounded bg-slate-950 border border-slate-800 text-slate-100 font-mono-data text-center focus:outline-none focus:border-cyan-400"
+                      />
+                      <span className="text-[10px] text-slate-400">kg</span>
+                    </div>
+
+                    {/* Reps Input */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        id={`set-reps-input-${exercise._id}-${setNum}`}
+                        type="text"
+                        placeholder="reps"
+                        value={setInputs[setNum]?.reps || ''}
+                        onChange={(e) =>
+                          setSetInputs((prev) => ({
+                            ...prev,
+                            [setNum]: { ...prev[setNum], reps: e.target.value },
+                          }))
+                        }
+                        className="w-16 px-1.5 py-1 text-xs rounded bg-slate-950 border border-slate-800 text-slate-100 font-mono-data text-center focus:outline-none focus:border-cyan-400"
+                      />
+                      <span className="text-[10px] text-slate-400">reps</span>
+                    </div>
+
+                    {/* Log Set Checkmark Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleLogSet(setNum)}
+                      disabled={isFrozen || workoutSyncing}
+                      className={`w-7 h-7 rounded border flex items-center justify-center text-xs font-bold transition-all ${
+                        isSetDone
+                          ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-sm'
+                          : 'border-slate-600 hover:border-cyan-400 text-slate-300'
+                      }`}
+                      title={isSetDone ? 'Set Logged ✓' : 'Log Set'}
+                    >
+                      {isSetDone ? '✓' : 'Log'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </li>
   );
 }

@@ -32,4 +32,6 @@ const monthlyGrindSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+monthlyGrindSchema.index({ periodKey: 1 });
+
 module.exports = mongoose.model('MonthlyGrind', monthlyGrindSchema);

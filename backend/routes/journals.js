@@ -18,6 +18,7 @@ function toPublicEntry(doc) {
   return {
     dateKey: doc.dateKey,
     text,
+    moodScore: doc.moodScore ?? null,
     updatedAt: doc.updatedAt,
     encrypted: isEncryptedDoc(doc),
   };
@@ -165,18 +166,22 @@ router.put('/:dateKey', async (req, res) => {
     const dateKey = validateDateKey(req.params.dateKey);
     const text = validateJournalText(req.body?.text);
 
+    const moodScore = req.body?.moodScore != null ? Number(req.body.moodScore) : null;
     const { ciphertext, iv, tag } = encryptJournalText(text);
+    const updatePayload = {
+      ciphertext,
+      iv,
+      tag,
+      encrypted: true,
+      plaintext: '',
+    };
+    if (moodScore != null && moodScore >= 1 && moodScore <= 5) {
+      updatePayload.moodScore = moodScore;
+    }
+
     const doc = await JournalEntry.findOneAndUpdate(
       { dateKey },
-      {
-        $set: {
-          ciphertext,
-          iv,
-          tag,
-          encrypted: true,
-          plaintext: '',
-        },
-      },
+      { $set: updatePayload },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 

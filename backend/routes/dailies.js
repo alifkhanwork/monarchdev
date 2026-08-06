@@ -31,7 +31,7 @@ const {
   revertStatRewards,
   resolveTaskStatRewards,
 } = require('../utils/lifetimeTracking');
-const { isRecoveryDayType } = require('../utils/workoutRoutines');
+const { isRecoveryDayType, getExerciseCategory } = require('../utils/workoutRoutines');
 const { saveWithRetry } = require('../utils/saveWithRetry');
 const { getProgressMap } = require('../utils/progressService');
 const { classifyModality } = require('../utils/progressiveOverload');
@@ -54,6 +54,7 @@ const formatExercise = (ex, today, progressMap = {}) => {
     name: ex.name,
     sets: progress?.currentSets || ex.sets,
     repRange: progress?.currentRepRange || ex.repRange,
+    category: ex.category || getExerciseCategory(ex.name),
     completed,
     trackingType: ex.trackingType || 'none',
     stepTarget: isSteps ? stepTarget || 10000 : null,
@@ -137,11 +138,17 @@ router.get('/', async (req, res) => {
 
     const today = new Date();
     const dayType = getWorkoutDayType(today);
-    const tasks = await DailyTask.find().sort({ category: 1, taskName: 1 });
 
     const dayStatus = ensureTodayStatus(refreshedUser);
     const statusInfo = formatDayStatus(dayStatus);
     const isFrozen = statusInfo.isFrozen;
+
+    const [tasks, workout, progressMap, todayStatus] = await Promise.all([
+      DailyTask.find().sort({ category: 1, taskName: 1 }).lean(),
+      Workout.findOne({ dayType }).lean(),
+      getProgressMap(),
+      isFrozen ? Promise.resolve({ complete: false }) : getTodayCompletionStatus(),
+    ]);
 
     const tasksWithStatus = tasks.map((task) => formatTask(task, today));
 
@@ -153,7 +160,6 @@ router.get('/', async (req, res) => {
       }),
     }))
       .filter((group) => group.tasks.length > 0)
-      // Dedupe Productivity if both Professional and Productivity keys map
       .reduce((acc, group) => {
         const existing = acc.find((g) => g.category === group.category);
         if (existing) {
@@ -166,10 +172,6 @@ router.get('/', async (req, res) => {
         }
         return acc;
       }, []);
-
-    const workout = await Workout.findOne({ dayType });
-    const progressMap = await getProgressMap();
-    const todayStatus = isFrozen ? { complete: false } : await getTodayCompletionStatus();
     const possibleExp = tasksWithStatus.reduce((sum, t) => sum + t.expReward, 0);
     const earnedExp = tasksWithStatus
       .filter((t) => t.isCompleted)
@@ -373,6 +375,122 @@ router.post('/workout/:workoutId/exercise/:exerciseId/steps', async (req, res) =
     res.json({
       ...formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap),
       stepResult,
+    });
+  } catch (error) {
+    const code = error.statusCode || 500;
+    res.status(code).json({ message: error.message });
+  }
+});
+
+router.post('/workout/:workoutId/exercise/:exerciseId/set', async (req, res) => {
+  try {
+    const user = await getPlayer();
+    assertDayNotFrozen(user);
+
+    const workout = await Workout.findById(req.params.workoutId);
+    if (!workout) return res.status(404).json({ message: 'Workout not found' });
+
+    const exercise = workout.exercises.id(req.params.exerciseId);
+    if (!exercise) return res.status(404).json({ message: 'Exercise not found' });
+
+    const { setNumber, weightKg, reps, completed } = req.body;
+    const num = Number(setNumber);
+    if (Number.isNaN(num) || num < 1 || num > 5) {
+      return res.status(400).json({ message: 'Invalid set number (must be 1-5)' });
+    }
+
+    if (!exercise.setStructure || exercise.setStructure.length === 0) {
+      const progressMap = await getProgressMap();
+      const progress = progressMap[exercise.name];
+      exercise.setStructure = generateSetStructure(
+        exercise.name,
+        progress?.currentRepRange || exercise.repRange,
+        progress?.currentWeightKg
+      );
+    }
+
+    const setStruct = exercise.setStructure.find((s) => s.setNumber === num);
+    const setType = setStruct?.type || (num <= 2 ? 'warmup' : 'working');
+
+    let logged = exercise.loggedSets.find((s) => s.setNumber === num);
+    if (!logged) {
+      exercise.loggedSets.push({
+        setNumber: num,
+        type: setType,
+        weightKg: weightKg != null ? Number(weightKg) : null,
+        reps: reps != null ? Number(reps) : 0,
+        completed: Boolean(completed),
+      });
+      logged = exercise.loggedSets.find((s) => s.setNumber === num);
+    } else {
+      if (weightKg !== undefined) logged.weightKg = weightKg != null ? Number(weightKg) : null;
+      if (reps !== undefined) logged.reps = Number(reps);
+      if (completed !== undefined) logged.completed = Boolean(completed);
+    }
+
+    const completedCount = exercise.loggedSets.filter((s) => s.completed).length;
+    const totalSetsRequired = exercise.setStructure?.length || 5;
+    const isAllDone = completedCount >= totalSetsRequired;
+    const today = new Date();
+
+    if (isAllDone) {
+      exercise.completed = true;
+      exercise.lastCompletedDate = today;
+    } else if (completed === false) {
+      exercise.completed = false;
+    }
+
+    let prEarned = false;
+    let prDetails = null;
+
+    if (completed && setType === 'working') {
+      const progressDoc = await ExerciseProgress.findOne({ exerciseName: exercise.name });
+      const prevHeaviest = progressDoc?.personalRecord?.heaviestWeightKg || 0;
+      const prevSingleReps = progressDoc?.personalRecord?.bestSingleSetReps || 0;
+
+      const setWeight = logged.weightKg || 0;
+      const setReps = logged.reps || 0;
+
+      const beatsWeight = setWeight > prevHeaviest;
+      const beatsReps = setWeight >= prevHeaviest && setReps > prevSingleReps;
+
+      if ((beatsWeight || beatsReps) && setReps > 0) {
+        prEarned = true;
+        exercise.isPR = true;
+        const valDisp = setWeight > 0 ? `${setWeight}kg × ${setReps} reps` : `${setReps} reps`;
+        prDetails = {
+          exerciseName: exercise.name,
+          valueDisplay: valDisp,
+          weightKg: setWeight,
+          reps: setReps,
+          dateKey: localDateKey(today),
+        };
+
+        user.personalRecordLogs.push({
+          exerciseName: exercise.name,
+          valueDisplay: valDisp,
+          weightKg: setWeight,
+          reps: setReps,
+          dateKey: localDateKey(today),
+          createdAt: today,
+        });
+
+        if (setWeight > 0) {
+          user.lifetimeStats.totalWeightLiftedKg =
+            (user.lifetimeStats.totalWeightLiftedKg || 0) + Math.round(setWeight * setReps);
+        }
+      }
+    }
+
+    await workout.save();
+    const syncResult = await processWorkoutSync(user, workout);
+    await saveWithRetry(user);
+
+    const progressMap = await getProgressMap();
+    res.json({
+      ...formatWorkoutSyncResponse(user, workout, syncResult, today, progressMap),
+      isPR: prEarned,
+      prDetails,
     });
   } catch (error) {
     const code = error.statusCode || 500;

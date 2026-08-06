@@ -106,9 +106,12 @@ export interface User {
     weightUnit: 'kg' | 'lbs';
     weekStartsOn: 0 | 1;
     weeklyDigestEnabled?: boolean;
+    fiveDaysStraight?: boolean;
   };
   email?: string;
   cheatDayTokens?: number;
+  personalRecordLogs?: PRLogEntry[];
+  moodHistory?: { dateKey: string; moodScore: number; note?: string }[];
 }
 
 export interface PenaltyInfo {
@@ -155,11 +158,59 @@ export interface GroupedTasks {
   tasks: DailyTask[];
 }
 
+export interface SetStructureItem {
+  setNumber: number;
+  type: 'warmup' | 'working';
+  suggestedWeight: number | null;
+  targetReps: string;
+}
+
+export interface LoggedSet {
+  setNumber: number;
+  type: 'warmup' | 'working';
+  weightKg: number | null;
+  reps: number;
+  completed: boolean;
+}
+
+export interface PRLogEntry {
+  _id?: string;
+  exerciseName: string;
+  valueDisplay: string;
+  weightKg?: number | null;
+  reps?: number;
+  dateKey: string;
+  createdAt?: string;
+}
+
+export interface Subject {
+  _id: string;
+  name: string;
+  color: string;
+  code?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type AcademyTaskStatus = 'To Do' | 'In Progress' | 'Completed';
+
+export interface AcademyTask {
+  _id: string;
+  title: string;
+  subject: Subject;
+  dueDate: string; // YYYY-MM-DD
+  status: AcademyTaskStatus;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Exercise {
   _id: string;
   name: string;
   sets: number;
   repRange: string;
+  category?: string;
   completed: boolean;
   trackingType?: 'none' | 'steps';
   stepTarget?: number | null;
@@ -171,6 +222,9 @@ export interface Exercise {
   coachNote?: string | null;
   lastPerformance?: { dateKey?: string; weightKg?: number | null; sets?: number[] } | null;
   bestPerformance?: { dateKey?: string; weightKg?: number | null; sets?: number[]; totalReps?: number } | null;
+  setStructure?: SetStructureItem[];
+  loggedSets?: LoggedSet[];
+  isPR?: boolean;
 }
 
 export interface Workout {

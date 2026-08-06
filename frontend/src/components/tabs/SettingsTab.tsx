@@ -53,6 +53,7 @@ export default function SettingsTab({
     weightUnit?: WeightUnit;
     weekStartsOn?: 0 | 1;
     weeklyDigestEnabled?: boolean;
+    fiveDaysStraight?: boolean;
     email?: string;
   }) => {
     setSaving(true);
@@ -148,6 +149,33 @@ export default function SettingsTab({
                 onClick={() => patchSettings({ weekStartsOn: opt.v })}
                 className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded min-h-[36px] ${
                   weekStartsOn === opt.v
+                    ? 'bg-cyan-500/20 text-neon-teal'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="panel-label">Workout Frequency Mode</p>
+          <p className="text-meta mb-2">
+            Higher-frequency option: removes the second rest day on Sunday so the 5-day PPL×UL split repeats sooner.
+          </p>
+          <div className="inline-flex rounded border border-cyan-500/25 p-0.5 bg-slate-950/50">
+            {[
+              { val: false, label: 'Standard (5-Day + 2 Rest)' },
+              { val: true, label: '5-Days-Straight (Higher Frequency)' },
+            ].map((opt) => (
+              <button
+                key={String(opt.val)}
+                type="button"
+                disabled={saving}
+                onClick={() => patchSettings({ fiveDaysStraight: opt.val })}
+                className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded min-h-[36px] ${
+                  Boolean(user.settings?.fiveDaysStraight) === opt.val
                     ? 'bg-cyan-500/20 text-neon-teal'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}

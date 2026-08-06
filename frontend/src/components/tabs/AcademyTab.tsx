@@ -1,0 +1,183 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import type { AcademyTask, AcademyTaskStatus, Subject } from '@/types';
+import { api } from '@/lib/api';
+import AcademyListView from '../academy/AcademyListView';
+import AcademyCalendarView from '../academy/AcademyCalendarView';
+import AddTaskModal from '../academy/AddTaskModal';
+import AddSubjectModal from '../academy/AddSubjectModal';
+
+export default function AcademyTab() {
+  const [activeTab, setActiveTab] = useState<'list' | 'calendar'>('list');
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [tasks, setTasks] = useState<AcademyTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [selectedDueDate, setSelectedDueDate] = useState<string | undefined>(undefined);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [subsRes, tasksRes] = await Promise.all([
+        api.getAcademySubjects(),
+        api.getAcademyTasks(),
+      ]);
+      setSubjects(subsRes);
+      setTasks(tasksRes);
+    } catch {
+      // Graceful fallback to empty array if DB not seeded yet
+      setSubjects([]);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleStatusChange = async (taskId: string, newStatus: AcademyTaskStatus) => {
+    try {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
+      );
+      await api.updateAcademyTask(taskId, { status: newStatus });
+      loadData();
+    } catch {
+      loadData();
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
+      await api.deleteAcademyTask(taskId);
+    } catch {
+      loadData();
+    }
+  };
+
+  const handleDeleteSubject = async (subjectId: string) => {
+    try {
+      setSubjects((prev) => prev.filter((s) => s._id !== subjectId));
+      await api.deleteAcademySubject(subjectId);
+      loadData();
+    } catch {
+      loadData();
+    }
+  };
+
+  const handleOpenTaskModal = (dateKey?: string) => {
+    setSelectedDueDate(dateKey);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSubjectSaved = (newSub: Subject) => {
+    setSubjects((prev) => {
+      const idx = prev.findIndex((s) => s._id === newSub._id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = newSub;
+        return next;
+      }
+      return [...prev, newSub];
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Top Banner */}
+      <div className="glass-panel border-l-4 border-l-cyan-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="panel-label mb-0.5">Academic Operations</p>
+          <h2 className="text-xl sm:text-2xl font-bold font-mono-data text-white tracking-wide">
+            🎓 THE ACADEMY
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Manage course subjects, assignments, and master deadline calendar
+          </p>
+        </div>
+
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950/80 border border-slate-800 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => setActiveTab('list')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'list'
+                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            📋 List / Board View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('calendar')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'calendar'
+                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            📅 Master Calendar
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-3 text-xs rounded-lg bg-red-950/60 border border-red-500/40 text-red-300">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="glass-panel text-center py-12">
+          <span className="text-xl animate-spin-slow inline-block mb-2">🎓</span>
+          <p className="text-xs text-slate-400 font-mono-data">Loading Academic Records...</p>
+        </div>
+      ) : activeTab === 'list' ? (
+        <AcademyListView
+          tasks={tasks}
+          subjects={subjects}
+          onStatusChange={handleStatusChange}
+          onDeleteTask={handleDeleteTask}
+          onAddTask={() => handleOpenTaskModal()}
+          onAddSubject={() => setIsSubjectModalOpen(true)}
+          onDeleteSubject={handleDeleteSubject}
+        />
+      ) : (
+        <AcademyCalendarView
+          tasks={tasks}
+          subjects={subjects}
+          onToggleTaskStatus={handleStatusChange}
+          onOpenAddModalWithDate={(dateKey) => handleOpenTaskModal(dateKey)}
+        />
+      )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isTaskModalOpen}
+        subjects={subjects}
+        initialDueDate={selectedDueDate}
+        onClose={() => setIsTaskModalOpen(false)}
+        onTaskCreated={loadData}
+        onSubjectCreated={handleSubjectSaved}
+      />
+
+      {/* Add Subject Modal */}
+      <AddSubjectModal
+        isOpen={isSubjectModalOpen}
+        onClose={() => setIsSubjectModalOpen(false)}
+        onSubjectSaved={handleSubjectSaved}
+      />
+    </div>
+  );
+}

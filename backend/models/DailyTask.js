@@ -66,4 +66,7 @@ const dailyTaskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+dailyTaskSchema.index({ category: 1, taskName: 1 });
+dailyTaskSchema.index({ taskName: 1 });
+
 module.exports = mongoose.model('DailyTask', dailyTaskSchema);

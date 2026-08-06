@@ -17,6 +17,7 @@ const journalEntrySchema = new mongoose.Schema(
     iv: { type: String, default: '' },
     tag: { type: String, default: '' },
     encrypted: { type: Boolean, default: true },
+    moodScore: { type: Number, min: 1, max: 5, default: null },
     /** Legacy only — cleared by encrypt-journals migration */
     plaintext: { type: String, default: '' },
   },

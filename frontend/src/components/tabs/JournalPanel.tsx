@@ -7,7 +7,7 @@ import { LIMITS } from '@/lib/inputValidation';
 
 interface JournalPanelProps {
   journalEntry: string;
-  onSave: (text: string) => void | Promise<void>;
+  onSave: (text: string, moodScore?: number) => void | Promise<void>;
   isFrozenDay?: boolean;
   viewDateLabel?: string;
   /** YYYY-MM-DD for prompt rotation when viewing a specific day */
@@ -138,6 +138,8 @@ export default function JournalPanel({
     ? `Journal for ${viewDateLabel}: ${prompt}`
     : prompt;
 
+  const [moodScore, setMoodScore] = useState<number>(4);
+
   const handleCategoryChange = (key: string, value: string) => {
     setDrafts((prev) => ({ ...prev, [key]: value }));
   };
@@ -145,7 +147,7 @@ export default function JournalPanel({
   const handleSave = async () => {
     if (!canSave) return;
     const combined = combineJournalEntry(drafts);
-    await onSave(combined);
+    await onSave(combined, moodScore);
     setIsEditing(false);
   };
 
@@ -218,6 +220,30 @@ export default function JournalPanel({
               />
             </div>
           ))}
+
+          {/* Mood & Energy Selector (1-5) */}
+          <div className="pt-1">
+            <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5 block">
+              ⚡ Mood & Energy Rating
+            </label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((score) => (
+                <button
+                  key={score}
+                  type="button"
+                  disabled={!isEditing}
+                  onClick={() => setMoodScore(score)}
+                  className={`flex-1 py-1.5 text-xs font-bold font-mono-data rounded-lg border transition-all ${
+                    moodScore === score
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-sm shadow-cyan-500/30 scale-105'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  ⚡ {score}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -278,21 +304,20 @@ export default function JournalPanel({
 
   if (isDrawer) {
     return (
-      <>
-        <button
-          type="button"
-          className="journal-drawer-backdrop border-0 cursor-default"
-          aria-label="Close journal drawer"
-          onClick={onClose}
-        />
-        <aside
-          className="journal-drawer custom-scrollbar overflow-y-auto"
+      <div
+        className="journal-drawer-backdrop"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose?.();
+        }}
+      >
+        <div
+          className="journal-drawer"
           role="dialog"
           aria-modal="true"
         >
           {body}
-        </aside>
-      </>
+        </div>
+      </div>
     );
   }
 

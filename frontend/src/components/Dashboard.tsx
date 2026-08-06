@@ -12,18 +12,21 @@ import type {
   WorkoutSyncResponse,
 } from '@/types';
 import type { TabId } from '@/types/tabs';
+import dynamic from 'next/dynamic';
 import SystemNav from '@/components/layout/SystemNav';
 import DailyGrindTab from '@/components/tabs/DailyGrindTab';
-import GrindHubTab from '@/components/tabs/GrindHubTab';
-import PlayerProfileTab from '@/components/tabs/PlayerProfileTab';
-import QuestBoardTab from '@/components/tabs/QuestBoardTab';
 import LevelUpToast from '@/components/LevelUpToast';
 import ActionToast from '@/components/ActionToast';
-import OnboardingModal from '@/components/OnboardingModal';
-import SettingsTab from '@/components/tabs/SettingsTab';
-import WorkoutPerformanceModal from '@/components/workout/WorkoutPerformanceModal';
-import CoachFeedbackModal from '@/components/workout/CoachFeedbackModal';
 import { DashboardBootSkeleton } from '@/components/ui/Skeleton';
+
+const GrindHubTab = dynamic(() => import('@/components/tabs/GrindHubTab'));
+const AcademyTab = dynamic(() => import('@/components/tabs/AcademyTab'));
+const PlayerProfileTab = dynamic(() => import('@/components/tabs/PlayerProfileTab'));
+const QuestBoardTab = dynamic(() => import('@/components/tabs/QuestBoardTab'));
+const SettingsTab = dynamic(() => import('@/components/tabs/SettingsTab'));
+const WorkoutPerformanceModal = dynamic(() => import('@/components/workout/WorkoutPerformanceModal'));
+const CoachFeedbackModal = dynamic(() => import('@/components/workout/CoachFeedbackModal'));
+const OnboardingModal = dynamic(() => import('@/components/OnboardingModal'));
 import SectionErrorBoundary from '@/components/ui/SectionErrorBoundary';
 import { DAY_CLEARED_FLAVOR, pickFlavor, QUEST_CLEARED_FLAVOR } from '@/lib/systemFlavor';
 import { toggleCustomQuestCompleted, type CustomQuest } from '@/lib/customQuestsStorage';
@@ -617,6 +620,12 @@ export default function Dashboard() {
         {activeTab === 'grind' && (
           <SectionErrorBoundary label="The Grind">
             <GrindHubTab />
+          </SectionErrorBoundary>
+        )}
+
+        {activeTab === 'academy' && (
+          <SectionErrorBoundary label="The Academy">
+            <AcademyTab />
           </SectionErrorBoundary>
         )}
 

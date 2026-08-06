@@ -202,6 +202,9 @@ router.patch('/settings', async (req, res) => {
     if (weeklyDigestEnabled !== undefined) {
       user.settings.weeklyDigestEnabled = Boolean(weeklyDigestEnabled);
     }
+    if (fiveDaysStraight !== undefined) {
+      user.settings.fiveDaysStraight = Boolean(fiveDaysStraight);
+    }
     if (email !== undefined) {
       const trimmed = String(email).trim();
       if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
@@ -219,6 +222,7 @@ router.patch('/settings', async (req, res) => {
         weightUnit: user.settings.weightUnit === 'lbs' ? 'lbs' : 'kg',
         weekStartsOn: user.settings.weekStartsOn === 0 ? 0 : 1,
         weeklyDigestEnabled: user.settings.weeklyDigestEnabled !== false,
+        fiveDaysStraight: Boolean(user.settings.fiveDaysStraight),
       },
     });
   } catch (error) {

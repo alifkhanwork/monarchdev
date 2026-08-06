@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import Image from 'next/image';
 import type { TabId } from '@/types/tabs';
 import { TABS } from '@/types/tabs';
 
@@ -78,7 +79,7 @@ export default function SystemNav({
           <div className="flex items-center justify-between py-2 sm:py-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded border border-cyan-400/40 bg-cyan-500/10 flex items-center justify-center shrink-0">
-                <img
+                <Image
                   src="/crown.svg"
                   alt=""
                   width={16}

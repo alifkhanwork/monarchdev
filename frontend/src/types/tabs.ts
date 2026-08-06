@@ -1,4 +1,4 @@
-export type TabId = 'daily' | 'grind' | 'profile' | 'milestones' | 'settings';
+export type TabId = 'daily' | 'grind' | 'academy' | 'profile' | 'milestones' | 'settings';
 
 export type GrindPeriod = 'weekly' | 'monthly';
 
@@ -24,6 +24,13 @@ export const TABS: TabConfig[] = [
     shortLabel: 'Grind',
     icon: '🛡',
     description: 'Recurring weekly & monthly goals',
+  },
+  {
+    id: 'academy',
+    label: 'The Academy',
+    shortLabel: 'Academy',
+    icon: '🎓',
+    description: 'School & assignment tracker',
   },
   {
     id: 'profile',

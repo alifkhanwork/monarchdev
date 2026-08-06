@@ -124,9 +124,7 @@ const seedData = async () => {
       expReward: 45,
       statModifier: 'intelligence',
       statRewards: [{ stat: 'intelligence', amount: 2 }],
-      lifetimeMetric: 'study_hours',
-      defaultLogValue: 1 / 6,
-      logValue: 1 / 6,
+      lifetimeMetric: 'none',
     },
     {
       taskName: 'End of day journal entry',

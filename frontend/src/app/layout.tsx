@@ -1,7 +1,22 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/react';
+import { Rajdhani, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
+
+const rajdhani = Rajdhani({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-rajdhani',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-jetbrains',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'The Dev Monarch',
@@ -37,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${rajdhani.variable} ${jetbrainsMono.variable}`}>
       <body>
         {children}
         <PwaRegister />

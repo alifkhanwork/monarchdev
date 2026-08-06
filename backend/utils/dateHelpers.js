@@ -56,21 +56,44 @@ const addCalendarDays = (dateKey, deltaDays) => {
   return localDateKey(next);
 };
 
-/** UL × PPL split with Wed/Sun recovery (Manila weekday). */
-const getWorkoutDayType = (date = new Date()) => {
-  switch (getZonedWeekday(date)) {
+/** PPL x UL schedule (Mon=Push, Tue=Pull, Wed=Legs, Thu=Upper, Fri=Lower, Sat=ActiveRecovery, Sun=Recovery). */
+const getWorkoutDayType = (date = new Date(), settings = {}) => {
+  const weekday = getZonedWeekday(date);
+  const fiveDaysStraight = Boolean(settings?.fiveDaysStraight);
+
+  if (fiveDaysStraight) {
+    switch (weekday) {
+      case 1:
+        return 'Push';
+      case 2:
+        return 'Pull';
+      case 3:
+        return 'Legs';
+      case 4:
+        return 'Upper';
+      case 5:
+        return 'Lower';
+      case 6:
+        return 'ActiveRecovery';
+      case 0:
+      default:
+        return 'Push';
+    }
+  }
+
+  switch (weekday) {
     case 1:
-      return 'Upper';
-    case 2:
-      return 'Lower';
-    case 3:
-      return 'ActiveRecovery';
-    case 4:
       return 'Push';
-    case 5:
+    case 2:
       return 'Pull';
-    case 6:
+    case 3:
       return 'Legs';
+    case 4:
+      return 'Upper';
+    case 5:
+      return 'Lower';
+    case 6:
+      return 'ActiveRecovery';
     case 0:
     default:
       return 'Recovery';

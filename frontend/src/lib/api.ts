@@ -54,6 +54,7 @@ export const api = {
     weightUnit?: 'kg' | 'lbs';
     weekStartsOn?: 0 | 1;
     weeklyDigestEnabled?: boolean;
+    fiveDaysStraight?: boolean;
     email?: string;
   }) =>
     fetchAPI<{
@@ -62,6 +63,7 @@ export const api = {
         weightUnit: 'kg' | 'lbs';
         weekStartsOn: 0 | 1;
         weeklyDigestEnabled?: boolean;
+        fiveDaysStraight?: boolean;
       };
     }>('/api/user/settings', {
       method: 'PATCH',
@@ -209,11 +211,47 @@ export const api = {
       `/api/journals/${dateKey}`
     ),
 
-  saveJournal: (dateKey: string, text: string) =>
-    fetchAPI<{ dateKey: string; text: string; updatedAt: string | null; encrypted: boolean }>(
+  saveJournal: (dateKey: string, text: string, moodScore?: number | null) =>
+    fetchAPI<{ dateKey: string; text: string; moodScore?: number | null; updatedAt: string | null; encrypted: boolean }>(
       `/api/journals/${dateKey}`,
-      { method: 'PUT', body: JSON.stringify({ text }) }
+      { method: 'PUT', body: JSON.stringify({ text, moodScore }) }
     ),
+
+  logExerciseSet: (
+    workoutId: string,
+    exerciseId: string,
+    payload: { setNumber: number; weightKg?: number | null; reps?: number; completed?: boolean }
+  ) =>
+    fetchAPI<WorkoutSyncResponse & { isPR?: boolean; prDetails?: unknown }>(
+      `/api/dailies/workout/${workoutId}/exercise/${exerciseId}/set`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    ),
+
+  getAcademySubjects: () => fetchAPI<Subject[]>('/api/academy/subjects'),
+
+  createAcademySubject: (data: { name: string; color?: string; code?: string }) =>
+    fetchAPI<Subject>('/api/academy/subjects', { method: 'POST', body: JSON.stringify(data) }),
+
+  deleteAcademySubject: (id: string) =>
+    fetchAPI<{ message: string; id: string }>(`/api/academy/subjects/${id}`, { method: 'DELETE' }),
+
+  getAcademyTasks: (params?: { status?: string; subjectId?: string; upcoming?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.subjectId) q.set('subjectId', params.subjectId);
+    if (params?.upcoming) q.set('upcoming', 'true');
+    const qs = q.toString();
+    return fetchAPI<AcademyTask[]>(`/api/academy/tasks${qs ? `?${qs}` : ''}`);
+  },
+
+  createAcademyTask: (data: { title: string; subjectId: string; dueDate: string; status?: string; notes?: string }) =>
+    fetchAPI<AcademyTask>('/api/academy/tasks', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateAcademyTask: (id: string, patch: Partial<{ title: string; subjectId: string; dueDate: string; status: string; notes: string }>) =>
+    fetchAPI<AcademyTask>(`/api/academy/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  deleteAcademyTask: (id: string) =>
+    fetchAPI<{ message: string; id: string }>(`/api/academy/tasks/${id}`, { method: 'DELETE' }),
 
   listJournals: (params?: { limit?: number; before?: string; month?: string }) => {
     const q = new URLSearchParams();
@@ -222,7 +260,7 @@ export const api = {
     if (params?.month) q.set('month', params.month);
     const qs = q.toString();
     return fetchAPI<{
-      entries: { dateKey: string; text: string; updatedAt?: string }[];
+      entries: { dateKey: string; text: string; moodScore?: number | null; updatedAt?: string }[];
       hasMore: boolean;
       nextBefore: string | null;
       limit: number;

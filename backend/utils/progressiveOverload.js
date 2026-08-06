@@ -180,11 +180,12 @@ const evaluateExercise = ({
         nextStage = 'load';
       } else if (currentW != null && currentW >= MAX_DB_WEIGHT - 0.01) {
         verdict = 'progress';
-        nextStage = advanceStage(stage);
-        recommendation = stageAdvice(exerciseName, nextStage, range, targetSets);
+        nextStage = advanceStage(stage, 'dumbbell', exerciseName);
+        recommendation = stageAdvice(exerciseName, nextStage, range, targetSets, currentW);
       } else {
         verdict = 'progress';
-        recommendation = `Top of range reached — add load next time if a heavier DB is available.`;
+        nextStage = advanceStage(stage, 'dumbbell', exerciseName);
+        recommendation = stageAdvice(exerciseName, nextStage, range, targetSets, currentW);
       }
     } else if (score.allMax && beginner) {
       verdict = 'maintain';
@@ -204,8 +205,8 @@ const evaluateExercise = ({
     // bodyweight
     if (score.allMax && !beginner) {
       verdict = 'progress';
-      nextStage = advanceStage(stage);
-      recommendation = stageAdvice(exerciseName, nextStage, range, targetSets);
+      nextStage = advanceStage(stage, 'bodyweight', exerciseName);
+      recommendation = stageAdvice(exerciseName, nextStage, range, targetSets, null);
     } else if (score.allMax && beginner) {
       verdict = 'maintain';
       recommendation = 'Solid reps — lock in form for Weeks 1–4 before advancing variations.';
@@ -253,34 +254,43 @@ const evaluateExercise = ({
   };
 };
 
-const advanceStage = (stage) => {
-  const order = ['load', 'reps', 'eccentric', 'pause', 'sets', 'rest', 'variation'];
+const advanceStage = (stage, modality = 'dumbbell', name = '') => {
+  const isBW = modality === 'bodyweight' || /pull-up|chin-up|push-up|pike|diamond|dip/i.test(name);
+  const order = isBW
+    ? ['load', 'reps', 'eccentric', 'pause', 'density', 'weighted_bodyweight', 'failure', 'variation']
+    : ['load', 'reps', 'eccentric', 'pause', 'density', 'failure', 'variation'];
   const i = order.indexOf(stage);
-  if (i < 0 || i >= order.length - 1) return 'variation';
+  if (i < 0) return 'eccentric';
+  if (i >= order.length - 1) return 'variation';
   return order[i + 1];
 };
 
-const stageAdvice = (name, stage, range, sets) => {
+const stageAdvice = (name, stage, range, sets, weightKg) => {
+  const isBW = /pull-up|chin-up|push-up|pike|diamond|dip|leg raise/i.test(name);
+  const wStr = weightKg != null ? `${weightKg}kg` : 'bodyweight';
+
   switch (stage) {
-    case 'reps':
-      return `At max load — push toward higher quality reps above ${range.max} when possible.`;
     case 'eccentric':
-      return 'Add a slow eccentric: 3–5 second lowering on each rep.';
+      return `${name}: maxed at ${wStr} — try a 3–4 sec slow eccentric lowering phase next time.`;
     case 'pause':
-      return 'Pause 1–2 seconds at peak contraction each rep.';
-    case 'sets':
-      return `Add one set (aim ${sets + 1} total) while keeping form sharp.`;
-    case 'rest':
-      return 'Trim rest by ~15–30 seconds between sets.';
+      return `${name}: slow eccentrics hit — add a 1–2 sec pause at the hardest point of each rep next time.`;
+    case 'density':
+      return `${name}: pause reps solid — trim rest between sets by ~15–30s to increase density next time.`;
+    case 'weighted_bodyweight':
+      return isBW
+        ? `${name}: exceeding 12–15 reps easily — add load (DB between feet or in a backpack) next session.`
+        : `${name}: density goal reached — push sets closer to true failure (0–1 RIR) next time.`;
+    case 'failure':
+      return `${name}: maxed at ${wStr} and top of rep range — push sets closer to true failure (0–1 RIR) before advancing variation.`;
     case 'variation': {
       const ladder = VARIATION_LADDERS[name];
       if (ladder?.length > 1) {
-        return `Graduate toward a harder variation: ${ladder.slice(1, 3).join(' → ')}.`;
+        return `${name}: mechanism progression complete — advance to a harder variation (${ladder.slice(1, 3).join(' → ')}).`;
       }
-      return 'Move to a harder variation of this movement when ready.';
+      return `${name}: mechanism progression complete — move to a harder variation of this movement.`;
     }
     default:
-      return 'Continue double progression — earn every increase.';
+      return `${name}: continue solid double progression — earn every increase.`;
   }
 };
 

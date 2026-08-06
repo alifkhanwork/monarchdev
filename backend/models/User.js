@@ -83,6 +83,23 @@ const userSchema = new mongoose.Schema(
       longestWalkKm: { type: Number, default: null },
       fastest10kStepsMin: { type: Number, default: null },
     },
+    personalRecordLogs: [
+      {
+        exerciseName: { type: String, required: true },
+        valueDisplay: { type: String, required: true },
+        weightKg: { type: Number, default: null },
+        reps: { type: Number, default: 0 },
+        dateKey: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    moodHistory: [
+      {
+        dateKey: { type: String, required: true },
+        moodScore: { type: Number, required: true, min: 1, max: 5 },
+        note: { type: String, default: '' },
+      },
+    ],
     unlockedBadges: { type: [String], default: [] },
     lastWorkoutCountedDate: { type: Date, default: null },
     lastRecoveryCountedDate: { type: Date, default: null },
@@ -109,6 +126,7 @@ const userSchema = new mongoose.Schema(
       weightUnit: { type: String, enum: ['kg', 'lbs'], default: 'kg' },
       weekStartsOn: { type: Number, enum: [0, 1], default: 1 }, // 0=Sunday, 1=Monday
       weeklyDigestEnabled: { type: Boolean, default: true },
+      fiveDaysStraight: { type: Boolean, default: false },
     },
     cheatDayTokens: { type: Number, default: 0 },
     inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Item' }],

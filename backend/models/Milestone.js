@@ -42,4 +42,6 @@ const milestoneSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+milestoneSchema.index({ archived: 1, category: 1 });
+
 module.exports = mongoose.model('Milestone', milestoneSchema);

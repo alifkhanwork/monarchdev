@@ -8,9 +8,8 @@ import JournalPanel from './JournalPanel';
 import PenaltyBanner from './PenaltyBanner';
 import CustomQuestForm from './CustomQuestForm';
 import TodayPriorityCard from './TodayPriorityCard';
+import UpcomingDeadlinesCard from '@/components/academy/UpcomingDeadlinesCard';
 import QuestCheckRow from '@/components/quests/QuestCheckRow';
-import CollapsibleCategoryHeader from '@/components/quests/CollapsibleCategoryHeader';
-import { useCollapsibleSections } from '@/hooks/useCollapsibleSections';
 import {
   isCustomQuestCompleted,
   loadCustomQuestsForDate,
@@ -103,15 +102,7 @@ export default function DailyGrindTab({
 
   const customDone = customQuests.filter((q) => isCustomQuestCompleted(q.id, todayKey)).length;
   const customIncomplete = customQuests.length - customDone;
-  // Open Custom Quests by default only when it has incomplete items and no other
-  // preference yet — DailyTaskList owns habit/workout defaults separately.
-  const customDefaultOpen = customIncomplete > 0 ? CUSTOM_SECTION : null;
-  const { isCollapsed: isCustomCollapsed, toggle: toggleCustom } = useCollapsibleSections(
-    CUSTOM_COLLAPSE_KEY,
-    [CUSTOM_SECTION],
-    customDefaultOpen
-  );
-  const customCollapsed = isCustomCollapsed(CUSTOM_SECTION);
+
 
   return (
     <div className="tab-content space-y-2.5">
@@ -185,6 +176,8 @@ export default function DailyGrindTab({
         flashingId={flashingId}
         weightUnit={user.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'}
       />
+
+      <UpcomingDeadlinesCard />
 
       <section className="glass-panel !p-3 space-y-2 border-cyan-500/25 bg-slate-900/60">
         <div className="flex items-center justify-between gap-2 pb-2 border-b border-cyan-500/15 mb-2">

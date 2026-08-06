@@ -32,16 +32,20 @@ const DB_STATUS = {
 };
 
 let dbReady = false;
+let migrationDone = false;
 
 app.use(cors());
 app.use(express.json());
 
 app.use(async (req, res, next) => {
   try {
-    if (!dbReady) {
+    if (!dbReady || mongoose.connection.readyState !== 1) {
       await connectDB();
-      await migrateDailyTasks();
       dbReady = true;
+    }
+    if (!migrationDone) {
+      migrationDone = true;
+      migrateDailyTasks().catch((err) => console.error('Migration notice:', err.message));
     }
     next();
   } catch (error) {
@@ -98,6 +102,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/journals', journalRoutes);
+app.use('/api/academy', require('./routes/academy'));
 
 app.use((req, res) => {
   res.status(404).json({

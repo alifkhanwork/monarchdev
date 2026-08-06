@@ -143,7 +143,10 @@ export default function CalendarDayDetailPanel({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDeleteTask(task._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTask(task._id);
+                          }}
                           className="text-slate-500 hover:text-red-400 text-xs px-0.5"
                           title="Delete Task"
                         >

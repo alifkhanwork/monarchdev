@@ -199,7 +199,12 @@ export default function AcademyListView({
                     {subject._id !== 'other' && (
                       <button
                         type="button"
-                        onClick={() => onDeleteSubject(subject._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete subject "${subject.name}"?`)) {
+                            onDeleteSubject(subject._id);
+                          }
+                        }}
                         className="text-slate-500 hover:text-red-400 text-xs p-0.5"
                         title="Delete Subject"
                       >
@@ -262,7 +267,10 @@ export default function AcademyListView({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => onDeleteTask(task._id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteTask(task._id);
+                                    }}
                                     className="text-slate-500 hover:text-red-400 text-[11px] px-0.5"
                                     title="Delete Task"
                                   >
@@ -397,8 +405,12 @@ export default function AcademyListView({
                             </button>
                             <button
                               type="button"
-                              onClick={() => onDeleteTask(task._id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteTask(task._id);
+                              }}
                               className="text-slate-500 hover:text-red-400 text-xs"
+                              title="Delete Task"
                             >
                               ✕
                             </button>

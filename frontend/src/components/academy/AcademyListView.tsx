@@ -9,6 +9,7 @@ interface AcademyListViewProps {
   onStatusChange: (taskId: string, newStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
   onAddTask: () => void;
+  onAddTaskForSubject?: (subjectId: string) => void;
   onAddSubject: () => void;
   onDeleteSubject: (subjectId: string) => void;
 }
@@ -198,56 +199,74 @@ export default function AcademyListView({
                 {!isCollapsed && (
                   <div className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
                     {subTasks.length === 0 ? (
-                      <p className="p-2 text-[11px] text-slate-500 italic text-center">
-                        No tasks in this subject.
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onAddTaskForSubject?.(subject._id)}
+                        className="w-full py-3 px-3 rounded-lg border border-dashed border-slate-800 hover:border-cyan-500/50 bg-slate-950/40 hover:bg-slate-900/60 text-slate-400 hover:text-cyan-300 transition-all flex items-center justify-center gap-1.5 text-xs font-medium group"
+                      >
+                        <span className="text-cyan-400 group-hover:scale-110 transition-transform">
+                          +
+                        </span>
+                        <span>Add task</span>
+                      </button>
                     ) : (
-                      subTasks.map((task) => {
-                        const isDone = task.status === 'Completed';
-                        return (
-                          <div
-                            key={task._id}
-                            className={`p-2 rounded-lg border border-slate-800/80 bg-slate-950/60 space-y-1 transition-all ${
-                              isDone ? 'opacity-50' : 'hover:border-cyan-500/30'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-1.5">
-                              <p
-                                className={`text-xs font-semibold ${
-                                  isDone ? 'line-through text-slate-500' : 'text-slate-200'
-                                }`}
-                              >
-                                {task.title}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => onDeleteTask(task._id)}
-                                className="text-slate-500 hover:text-red-400 text-[11px]"
-                              >
-                                ✕
-                              </button>
-                            </div>
+                      <>
+                        {subTasks.map((task) => {
+                          const isDone = task.status === 'Completed';
+                          return (
+                            <div
+                              key={task._id}
+                              className={`p-2 rounded-lg border border-slate-800/80 bg-slate-950/60 space-y-1 transition-all ${
+                                isDone ? 'opacity-50' : 'hover:border-cyan-500/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-1.5">
+                                <p
+                                  className={`text-xs font-semibold ${
+                                    isDone ? 'line-through text-slate-500' : 'text-slate-200'
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteTask(task._id)}
+                                  className="text-slate-500 hover:text-red-400 text-[11px]"
+                                >
+                                  ✕
+                                </button>
+                              </div>
 
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-900">
-                              <span className="text-[10px] font-mono-data text-slate-400">
-                                📅 {task.dueDate}
-                              </span>
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-900">
+                                <span className="text-[10px] font-mono-data text-slate-400">
+                                  📅 {task.dueDate}
+                                </span>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onStatusChange(task._id, getNextStatus(task.status))
-                                }
-                                className={`px-2 py-0.5 text-[9px] font-bold rounded border ${getStatusBadgeStyle(
-                                  task.status
-                                )}`}
-                              >
-                                {task.status}
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onStatusChange(task._id, getNextStatus(task.status))
+                                  }
+                                  className={`px-2 py-0.5 text-[9px] font-bold rounded border ${getStatusBadgeStyle(
+                                    task.status
+                                  )}`}
+                                >
+                                  {task.status}
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+
+                        {/* Bottom quick-add row when subject has tasks */}
+                        <button
+                          type="button"
+                          onClick={() => onAddTaskForSubject?.(subject._id)}
+                          className="w-full py-1.5 px-2 rounded border border-dashed border-slate-800 hover:border-cyan-500/40 bg-slate-950/20 hover:bg-slate-900/40 text-slate-400 hover:text-cyan-300 transition-all flex items-center justify-center gap-1 text-[11px] font-medium mt-1"
+                        >
+                          <span>+ Add task</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 )}

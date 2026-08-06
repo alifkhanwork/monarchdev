@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AcademyTaskStatus, Subject } from '@/types';
 import { api } from '@/lib/api';
 
@@ -8,6 +8,7 @@ interface AddTaskModalProps {
   isOpen: boolean;
   subjects: Subject[];
   initialDueDate?: string;
+  initialSubjectId?: string;
   onClose: () => void;
   onTaskCreated: () => void;
   onSubjectCreated?: (subject: Subject) => void;
@@ -28,15 +29,31 @@ export default function AddTaskModal({
   isOpen,
   subjects,
   initialDueDate,
+  initialSubjectId,
   onClose,
   onTaskCreated,
   onSubjectCreated,
 }: AddTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState(subjects[0]?._id || '');
+  const [subjectId, setSubjectId] = useState(
+    initialSubjectId || subjects[0]?._id || ''
+  );
   const [dueDate, setDueDate] = useState(
     initialDueDate || new Date().toISOString().slice(0, 10)
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialSubjectId) {
+        setSubjectId(initialSubjectId);
+      } else if (subjects.length > 0 && !subjectId) {
+        setSubjectId(subjects[0]._id);
+      }
+      if (initialDueDate) {
+        setDueDate(initialDueDate);
+      }
+    }
+  }, [isOpen, initialSubjectId, initialDueDate, subjects]);
   const [status, setStatus] = useState<AcademyTaskStatus>('To Do');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);

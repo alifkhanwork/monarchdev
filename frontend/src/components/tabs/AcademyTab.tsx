@@ -19,6 +19,7 @@ export default function AcademyTab() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [selectedDueDate, setSelectedDueDate] = useState<string | undefined>(undefined);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | undefined>(undefined);
 
   const loadData = async () => {
     try {
@@ -31,7 +32,6 @@ export default function AcademyTab() {
       setSubjects(subsRes);
       setTasks(tasksRes);
     } catch {
-      // Graceful fallback to empty array if DB not seeded yet
       setSubjects([]);
       setTasks([]);
     } finally {
@@ -74,8 +74,9 @@ export default function AcademyTab() {
     }
   };
 
-  const handleOpenTaskModal = (dateKey?: string) => {
+  const handleOpenTaskModal = (dateKey?: string, subjectId?: string) => {
     setSelectedDueDate(dateKey);
+    setSelectedSubjectId(subjectId);
     setIsTaskModalOpen(true);
   };
 
@@ -150,6 +151,7 @@ export default function AcademyTab() {
           onStatusChange={handleStatusChange}
           onDeleteTask={handleDeleteTask}
           onAddTask={() => handleOpenTaskModal()}
+          onAddTaskForSubject={(subjectId) => handleOpenTaskModal(undefined, subjectId)}
           onAddSubject={() => setIsSubjectModalOpen(true)}
           onDeleteSubject={handleDeleteSubject}
         />
@@ -167,6 +169,7 @@ export default function AcademyTab() {
         isOpen={isTaskModalOpen}
         subjects={subjects}
         initialDueDate={selectedDueDate}
+        initialSubjectId={selectedSubjectId}
         onClose={() => setIsTaskModalOpen(false)}
         onTaskCreated={loadData}
         onSubjectCreated={handleSubjectSaved}

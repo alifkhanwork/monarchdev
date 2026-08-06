@@ -1,7 +1,6 @@
-'use client';
-
 import { useState } from 'react';
 import type { AcademyTask, AcademyTaskStatus, Subject } from '@/types';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 interface AcademyListViewProps {
   tasks: AcademyTask[];
@@ -48,6 +47,11 @@ export default function AcademyListView({
   const [viewMode, setViewMode] = useState<ViewMode>('subject');
   const [collapsedSubjects, setCollapsedSubjects] = useState<Record<string, boolean>>({});
   const [draggedOverCol, setDraggedOverCol] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'subject' | 'task';
+    id: string;
+    name: string;
+  } | null>(null);
 
   const toggleSubjectCollapse = (subId: string) => {
     setCollapsedSubjects((prev) => ({ ...prev, [subId]: !prev[subId] }));
@@ -201,9 +205,7 @@ export default function AcademyListView({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Delete subject "${subject.name}"?`)) {
-                            onDeleteSubject(subject._id);
-                          }
+                          setDeleteTarget({ type: 'subject', id: subject._id, name: subject.name });
                         }}
                         className="text-slate-500 hover:text-red-400 text-xs p-0.5"
                         title="Delete Subject"
@@ -269,7 +271,7 @@ export default function AcademyListView({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onDeleteTask(task._id);
+                                      setDeleteTarget({ type: 'task', id: task._id, name: task.title });
                                     }}
                                     className="text-slate-500 hover:text-red-400 text-[11px] px-0.5"
                                     title="Delete Task"
@@ -407,7 +409,7 @@ export default function AcademyListView({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteTask(task._id);
+                                setDeleteTarget({ type: 'task', id: task._id, name: task.title });
                               }}
                               className="text-slate-500 hover:text-red-400 text-xs"
                               title="Delete Task"
@@ -425,6 +427,28 @@ export default function AcademyListView({
           })}
         </div>
       )}
+
+      {/* Sleek Custom Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        title={deleteTarget?.type === 'subject' ? 'Delete Subject?' : 'Delete Assignment?'}
+        itemName={deleteTarget?.name || ''}
+        message={
+          deleteTarget?.type === 'subject'
+            ? 'Deleting this subject will remove its category styling and section card.'
+            : undefined
+        }
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          if (deleteTarget.type === 'subject') {
+            onDeleteSubject(deleteTarget.id);
+          } else {
+            onDeleteTask(deleteTarget.id);
+          }
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
-'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { AcademyTask, AcademyTaskStatus } from '@/types';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 interface CalendarDayDetailPanelProps {
   isOpen: boolean;
@@ -23,6 +22,8 @@ export default function CalendarDayDetailPanel({
   onDeleteTask,
   onAddTaskForDate,
 }: CalendarDayDetailPanelProps) {
+  const [deletingTask, setDeletingTask] = useState<AcademyTask | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -145,7 +146,7 @@ export default function CalendarDayDetailPanel({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteTask(task._id);
+                            setDeletingTask(task);
                           }}
                           className="text-slate-500 hover:text-red-400 text-xs px-0.5"
                           title="Delete Task"
@@ -206,6 +207,20 @@ export default function CalendarDayDetailPanel({
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deletingTask)}
+        title="Delete Assignment?"
+        itemName={deletingTask?.title || ''}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={() => {
+          if (deletingTask) {
+            onDeleteTask(deletingTask._id);
+            setDeletingTask(null);
+          }
+        }}
+      />
     </div>
   );
 }

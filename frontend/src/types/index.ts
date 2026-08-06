@@ -199,6 +199,7 @@ export interface AcademyTask {
   title: string;
   subject: Subject;
   dueDate: string; // YYYY-MM-DD
+  dueTime?: string; // HH:mm or 11:59 PM
   status: AcademyTaskStatus;
   notes?: string;
   createdAt?: string;

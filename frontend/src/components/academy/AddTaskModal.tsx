@@ -54,6 +54,7 @@ export default function AddTaskModal({
       }
     }
   }, [isOpen, initialSubjectId, initialDueDate, subjects]);
+  const [dueTime, setDueTime] = useState('');
   const [status, setStatus] = useState<AcademyTaskStatus>('To Do');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,6 +86,7 @@ export default function AddTaskModal({
         title,
         subjectId,
         dueDate,
+        dueTime,
         status,
         notes,
       });
@@ -230,7 +232,7 @@ export default function AddTaskModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
                 Due Date *
@@ -240,7 +242,19 @@ export default function AddTaskModal({
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-950/80 border border-slate-700 text-white focus:outline-none focus:border-cyan-400"
+                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950/80 border border-slate-700 text-white focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                Due Time (Optional)
+              </label>
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950/80 border border-slate-700 text-white focus:outline-none focus:border-cyan-400"
               />
             </div>
 

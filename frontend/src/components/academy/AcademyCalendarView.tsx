@@ -1,12 +1,12 @@
-'use client';
-
 import { useState } from 'react';
 import type { AcademyTask, AcademyTaskStatus, Subject } from '@/types';
+import CalendarDayDetailPanel from './CalendarDayDetailPanel';
 
 interface AcademyCalendarViewProps {
   tasks: AcademyTask[];
   subjects: Subject[];
   onToggleTaskStatus: (taskId: string, currentStatus: AcademyTaskStatus) => void;
+  onDeleteTask: (taskId: string) => void;
   onOpenAddModalWithDate: (dateKey: string) => void;
 }
 
@@ -16,9 +16,11 @@ export default function AcademyCalendarView({
   tasks,
   subjects,
   onToggleTaskStatus,
+  onDeleteTask,
   onOpenAddModalWithDate,
 }: AcademyCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -46,17 +48,25 @@ export default function AcademyCalendarView({
 
   // Create calendar cell items
   const calendarCells = [];
-  // Leading empty cells
   for (let i = 0; i < firstDayOfMonth; i++) {
     calendarCells.push({ key: `prev-${i}`, dayNum: null, dateKey: null });
   }
-  // Days of month
   for (let d = 1; d <= daysInMonth; d++) {
     const dayStr = String(d).padStart(2, '0');
     const monthStr = String(month + 1).padStart(2, '0');
     const dateKey = `${year}-${monthStr}-${dayStr}`;
     calendarCells.push({ key: dateKey, dayNum: d, dateKey });
   }
+
+  const handleCellClick = (dateKey: string, dayTasks: AcademyTask[]) => {
+    if (dayTasks.length > 0) {
+      setSelectedDayKey(dateKey);
+    } else {
+      onOpenAddModalWithDate(dateKey);
+    }
+  };
+
+  const selectedDayTasks = selectedDayKey ? tasksByDate.get(selectedDayKey) || [] : [];
 
   return (
     <div className="glass-panel space-y-4">
@@ -127,7 +137,7 @@ export default function AcademyCalendarView({
           return (
             <div
               key={cell.dateKey}
-              onClick={() => cell.dateKey && onOpenAddModalWithDate(cell.dateKey)}
+              onClick={() => cell.dateKey && handleCellClick(cell.dateKey, dayTasks)}
               className={`min-h-[75px] sm:min-h-[95px] p-1.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-start group ${
                 isToday
                   ? 'bg-cyan-950/20 border-cyan-500/50 shadow-cyan-950/40'
@@ -162,13 +172,10 @@ export default function AcademyCalendarView({
                     <div
                       key={task._id}
                       onClick={(e) => {
-                        e.stopPropagation(); // prevent modal trigger
-                        onToggleTaskStatus(
-                          task._id,
-                          isDone ? 'To Do' : 'Completed'
-                        );
+                        e.stopPropagation();
+                        handleCellClick(cell.dateKey!, dayTasks);
                       }}
-                      title={`${task.title} (${task.status}) — Click to toggle completion`}
+                      title={`${task.title} (${task.status}) — Click to view day details`}
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 transition-all ${
                         isDone
                           ? 'opacity-50 line-through bg-slate-950/80 text-slate-400 border border-slate-800'
@@ -186,6 +193,17 @@ export default function AcademyCalendarView({
           );
         })}
       </div>
+
+      {/* Calendar Day Detail Panel */}
+      <CalendarDayDetailPanel
+        isOpen={Boolean(selectedDayKey)}
+        dateKey={selectedDayKey || ''}
+        tasks={selectedDayTasks}
+        onClose={() => setSelectedDayKey(null)}
+        onToggleStatus={onToggleTaskStatus}
+        onDeleteTask={onDeleteTask}
+        onAddTaskForDate={onOpenAddModalWithDate}
+      />
     </div>
   );
 }

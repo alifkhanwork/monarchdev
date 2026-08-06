@@ -27,6 +27,7 @@ export default function AcademyListView({
 }: AcademyListViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('subject');
   const [collapsedSubjects, setCollapsedSubjects] = useState<Record<string, boolean>>({});
+  const [draggedOverCol, setDraggedOverCol] = useState<string | null>(null);
 
   const toggleSubjectCollapse = (subId: string) => {
     setCollapsedSubjects((prev) => ({ ...prev, [subId]: !prev[subId] }));
@@ -281,18 +282,40 @@ export default function AcademyListView({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
           {KANBAN_COLUMNS.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.status);
+            const isHovered = draggedOverCol === col.status;
+
             return (
-              <div key={col.status} className="glass-panel space-y-2.5 !p-3">
+              <div
+                key={col.status}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDraggedOverCol(col.status);
+                }}
+                onDragLeave={() => setDraggedOverCol(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDraggedOverCol(null);
+                  const taskId = e.dataTransfer.getData('text/plain');
+                  if (taskId) {
+                    onStatusChange(taskId, col.status);
+                  }
+                }}
+                className={`glass-panel space-y-2.5 !p-3 transition-all ${
+                  isHovered
+                    ? 'border-cyan-400 bg-cyan-950/20 shadow-lg shadow-cyan-950/50 scale-[1.01]'
+                    : ''
+                }`}
+              >
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <h4 className={`text-xs uppercase font-bold tracking-wider ${col.accent}`}>
                     {col.label} ({colTasks.length})
                   </h4>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-h-[120px]">
                   {colTasks.length === 0 ? (
-                    <p className="text-[11px] text-slate-400 italic py-4 text-center">
-                      No tasks in {col.label}
+                    <p className="text-[11px] text-slate-400 italic py-8 text-center border-2 border-dashed border-slate-800/60 rounded-lg">
+                      Drop tasks here
                     </p>
                   ) : (
                     colTasks.map((task) => {
@@ -303,7 +326,11 @@ export default function AcademyListView({
                       return (
                         <div
                           key={task._id}
-                          className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2"
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', task._id);
+                          }}
+                          className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 cursor-grab active:cursor-grabbing hover:shadow-md transition-all space-y-2 group"
                         >
                           <div className="flex items-center justify-between">
                             <span
@@ -313,7 +340,7 @@ export default function AcademyListView({
                               {subName}
                             </span>
                             <span className="text-[10px] font-mono-data text-slate-400">
-                              📅 {task.dueDate}
+                              📅 {task.dueDate} {task.dueTime ? `· 🕒 ${task.dueTime}` : ''}
                             </span>
                           </div>
 

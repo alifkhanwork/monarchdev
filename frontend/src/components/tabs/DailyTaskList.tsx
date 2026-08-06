@@ -326,50 +326,55 @@ export default function DailyTaskList({
     return (
       <li key={task._id}>
         <div
-          className={`quest-item w-full ${task.isCompleted ? 'quest-item-done' : ''} ${
-            flashingId === task._id ? 'quest-item-flash' : ''
-          }`}
+          className={`quest-item w-full flex items-center justify-between gap-2.5 ${
+            task.isCompleted ? 'quest-item-done' : ''
+          } ${flashingId === task._id ? 'quest-item-flash' : ''}`}
         >
-          <button
-            type="button"
-            onClick={() => handleTaskClick(task)}
-            disabled={isFrozen || completingId === task._id}
-            className="quest-hit -ml-1"
-            aria-pressed={task.isCompleted}
-            aria-label={task.taskName}
-          >
-            <span
-              className={`quest-checkbox ${
-                task.isCompleted ? 'quest-checkbox-done' : ''
-              }`}
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => handleTaskClick(task)}
+              disabled={isFrozen || completingId === task._id}
+              className="quest-hit -ml-1 shrink-0"
+              aria-pressed={task.isCompleted}
+              aria-label={task.taskName}
             >
-              {task.isCompleted && '✓'}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTaskClick(task)}
-            disabled={isFrozen || completingId === task._id}
-            className="flex-1 min-w-0 text-left flex items-center gap-2"
-          >
-            <span
-              className={`text-[13px] sm:text-sm truncate ${
-                task.isCompleted ? 'line-through text-slate-500' : 'text-white'
-              }`}
+              <span
+                className={`quest-checkbox ${
+                  task.isCompleted ? 'quest-checkbox-done' : ''
+                }`}
+              >
+                {task.isCompleted && '✓'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTaskClick(task)}
+              disabled={isFrozen || completingId === task._id}
+              className="flex-1 min-w-0 text-left flex items-center gap-2"
             >
-              {task.taskName}
-            </span>
-            <span className="quest-meta-pill hidden sm:inline">
-              +{task.expReward} EXP · {formatStatRewards(task)}
-            </span>
-          </button>
-          <span className="quest-meta-pill sm:hidden">+{task.expReward}</span>
+              <span
+                className={`text-[13px] sm:text-sm truncate font-medium ${
+                  task.isCompleted ? 'line-through text-slate-500' : 'text-white'
+                }`}
+              >
+                {task.taskName}
+              </span>
+              <span className="quest-meta-pill hidden sm:inline shrink-0">
+                +{task.expReward} EXP · {formatStatRewards(task)}
+              </span>
+            </button>
+            <span className="quest-meta-pill sm:hidden shrink-0">+{task.expReward}</span>
+          </div>
+
           {hasLog && (
-            <QuestLogStepper
-              task={task}
-              disabled={isFrozen}
-              onCommit={onLogValueChange}
-            />
+            <div className="shrink-0 ml-1">
+              <QuestLogStepper
+                task={task}
+                disabled={isFrozen}
+                onCommit={onLogValueChange}
+              />
+            </div>
           )}
         </div>
       </li>
@@ -814,80 +819,90 @@ function StrengthExerciseRow({
 
         {/* Inline Expanded Sets */}
         {expanded && (
-          <div className="mt-2.5 pt-2 border-t border-slate-800 space-y-2 animate-fade-in">
+          <div className="mt-2.5 pt-2.5 border-t border-slate-800 space-y-2 animate-fade-in">
+            <div className="grid grid-cols-[100px_1fr_1fr_auto] gap-2 px-2 text-[10px] uppercase font-bold text-slate-400">
+              <span>Set Type</span>
+              <span className="text-center">Weight</span>
+              <span className="text-center">Reps</span>
+              <span className="text-right">Log</span>
+            </div>
+
             {[1, 2, 3, 4, 5].map((setNum) => {
               const logged = loggedSets.find((s) => s.setNumber === setNum);
               const isSetDone = logged?.completed ?? false;
               const isWarmup = setNum <= 2;
-              const setLabel = isWarmup ? `Warm-up ${setNum}` : `Working ${setNum - 2}`;
+              const setLabel = isWarmup ? `Warmup ${setNum}` : `Working ${setNum - 2}`;
 
               return (
                 <div
                   key={setNum}
-                  className={`p-2 rounded-lg border flex items-center justify-between gap-2 transition-all ${
+                  className={`grid grid-cols-[100px_1fr_1fr_auto] items-center gap-2 p-2 rounded-lg border-l-4 border transition-all ${
+                    isWarmup ? 'border-l-slate-500' : 'border-l-cyan-400'
+                  } ${
                     isSetDone
-                      ? 'bg-slate-950/60 border-slate-800/80 opacity-70'
-                      : 'bg-slate-900/80 border-slate-700/60 hover:border-cyan-500/30'
+                      ? 'bg-slate-950/80 border-slate-800/80 opacity-70'
+                      : 'bg-slate-900/90 border-slate-800 hover:border-cyan-500/30'
                   }`}
                 >
-                  <span
-                    className={`text-[11px] font-bold font-mono-data w-24 shrink-0 ${
-                      isWarmup ? 'text-slate-400' : 'text-cyan-300'
-                    }`}
-                  >
-                    {setLabel}
-                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        isWarmup
+                          ? 'bg-slate-800 text-slate-300'
+                          : 'bg-cyan-950 border border-cyan-500/40 text-cyan-300'
+                      }`}
+                    >
+                      {setLabel}
+                    </span>
+                  </div>
 
-                  <div className="flex items-center gap-2 flex-1 justify-end">
-                    {/* Weight Input */}
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="kg"
-                        value={setInputs[setNum]?.weight || ''}
-                        onChange={(e) =>
-                          setSetInputs((prev) => ({
-                            ...prev,
-                            [setNum]: { ...prev[setNum], weight: e.target.value },
-                          }))
-                        }
-                        className="w-14 px-1.5 py-1 text-xs rounded bg-slate-950 border border-slate-800 text-slate-100 font-mono-data text-center focus:outline-none focus:border-cyan-400"
-                      />
-                      <span className="text-[10px] text-slate-400">kg</span>
-                    </div>
+                  {/* Weight Input */}
+                  <div className="flex justify-center items-center">
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="kg"
+                      value={setInputs[setNum]?.weight || ''}
+                      onChange={(e) =>
+                        setSetInputs((prev) => ({
+                          ...prev,
+                          [setNum]: { ...prev[setNum], weight: e.target.value },
+                        }))
+                      }
+                      className="w-16 px-2 py-1 text-xs rounded-md bg-slate-950 border border-slate-700 text-white font-mono-data text-center focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
 
-                    {/* Reps Input */}
-                    <div className="flex items-center gap-1">
-                      <input
-                        id={`set-reps-input-${exercise._id}-${setNum}`}
-                        type="text"
-                        placeholder="reps"
-                        value={setInputs[setNum]?.reps || ''}
-                        onChange={(e) =>
-                          setSetInputs((prev) => ({
-                            ...prev,
-                            [setNum]: { ...prev[setNum], reps: e.target.value },
-                          }))
-                        }
-                        className="w-16 px-1.5 py-1 text-xs rounded bg-slate-950 border border-slate-800 text-slate-100 font-mono-data text-center focus:outline-none focus:border-cyan-400"
-                      />
-                      <span className="text-[10px] text-slate-400">reps</span>
-                    </div>
+                  {/* Reps Input */}
+                  <div className="flex justify-center items-center">
+                    <input
+                      id={`set-reps-input-${exercise._id}-${setNum}`}
+                      type="text"
+                      placeholder="reps"
+                      value={setInputs[setNum]?.reps || ''}
+                      onChange={(e) =>
+                        setSetInputs((prev) => ({
+                          ...prev,
+                          [setNum]: { ...prev[setNum], reps: e.target.value },
+                        }))
+                      }
+                      className="w-16 px-2 py-1 text-xs rounded-md bg-slate-950 border border-slate-700 text-white font-mono-data text-center focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
 
-                    {/* Log Set Checkmark Button */}
+                  {/* Log Set Checkmark Button */}
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={() => handleLogSet(setNum)}
                       disabled={isFrozen || workoutSyncing}
-                      className={`w-7 h-7 rounded border flex items-center justify-center text-xs font-bold transition-all ${
+                      className={`px-3 py-1 text-xs font-bold rounded-md border transition-all ${
                         isSetDone
-                          ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-sm'
-                          : 'border-slate-600 hover:border-cyan-400 text-slate-300'
+                          ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-md'
+                          : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950'
                       }`}
-                      title={isSetDone ? 'Set Logged ✓' : 'Log Set'}
                     >
-                      {isSetDone ? '✓' : 'Log'}
+                      {isSetDone ? '✓ Logged' : 'Log'}
                     </button>
                   </div>
                 </div>

@@ -160,6 +160,7 @@ export default function AcademyTab() {
           tasks={tasks}
           subjects={subjects}
           onToggleTaskStatus={handleStatusChange}
+          onDeleteTask={handleDeleteTask}
           onOpenAddModalWithDate={(dateKey) => handleOpenTaskModal(dateKey)}
         />
       )}

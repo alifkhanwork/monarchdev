@@ -244,10 +244,10 @@ export const api = {
     return fetchAPI<AcademyTask[]>(`/api/academy/tasks${qs ? `?${qs}` : ''}`);
   },
 
-  createAcademyTask: (data: { title: string; subjectId: string; dueDate: string; status?: string; notes?: string }) =>
+  createAcademyTask: (data: { title: string; subjectId: string; dueDate: string; dueTime?: string; status?: string; notes?: string }) =>
     fetchAPI<AcademyTask>('/api/academy/tasks', { method: 'POST', body: JSON.stringify(data) }),
 
-  updateAcademyTask: (id: string, patch: Partial<{ title: string; subjectId: string; dueDate: string; status: string; notes: string }>) =>
+  updateAcademyTask: (id: string, patch: Partial<{ title: string; subjectId: string; dueDate: string; dueTime: string; status: string; notes: string }>) =>
     fetchAPI<AcademyTask>(`/api/academy/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
   deleteAcademyTask: (id: string) =>

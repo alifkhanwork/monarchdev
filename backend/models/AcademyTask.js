@@ -9,6 +9,7 @@ const academyTaskSchema = new mongoose.Schema(
       required: true,
     },
     dueDate: { type: String, required: true }, // YYYY-MM-DD
+    dueTime: { type: String, default: '' }, // HH:mm or 11:59 PM
     status: {
       type: String,
       enum: ['To Do', 'In Progress', 'Completed'],

@@ -118,7 +118,7 @@ router.get('/tasks', async (req, res) => {
 // POST /api/academy/tasks
 router.post('/tasks', async (req, res) => {
   try {
-    const { title, subjectId, dueDate, status, notes } = req.body;
+    const { title, subjectId, dueDate, dueTime, status, notes } = req.body;
     if (!title || !title.trim()) {
       return res.status(400).json({ message: 'Task title is required' });
     }
@@ -133,6 +133,7 @@ router.post('/tasks', async (req, res) => {
       title: title.trim(),
       subject: subjectId,
       dueDate,
+      dueTime: dueTime ? dueTime.trim() : '',
       status: status || 'To Do',
       notes: notes ? notes.trim() : '',
     });
@@ -147,13 +148,14 @@ router.post('/tasks', async (req, res) => {
 // PATCH /api/academy/tasks/:id
 router.patch('/tasks/:id', async (req, res) => {
   try {
-    const { title, subjectId, dueDate, status, notes } = req.body;
+    const { title, subjectId, dueDate, dueTime, status, notes } = req.body;
     const task = await AcademyTask.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
     if (title !== undefined) task.title = title.trim();
     if (subjectId !== undefined) task.subject = subjectId;
     if (dueDate !== undefined) task.dueDate = dueDate;
+    if (dueTime !== undefined) task.dueTime = dueTime.trim();
     if (status !== undefined) task.status = status;
     if (notes !== undefined) task.notes = notes.trim();
 

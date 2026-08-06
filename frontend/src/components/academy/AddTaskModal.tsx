@@ -11,7 +11,7 @@ interface AddTaskModalProps {
   initialSubjectId?: string;
   editingTask?: AcademyTask | null;
   onClose: () => void;
-  onTaskCreated: () => void;
+  onTaskCreated: (task?: AcademyTask) => void;
   onSubjectCreated?: (subject: Subject) => void;
 }
 
@@ -88,8 +88,9 @@ export default function AddTaskModal({
     try {
       setLoading(true);
       setError(null);
+      let savedTask: AcademyTask;
       if (editingTask) {
-        await api.updateAcademyTask(editingTask._id, {
+        savedTask = await api.updateAcademyTask(editingTask._id, {
           title: title.trim(),
           subjectId,
           dueDate,
@@ -98,7 +99,7 @@ export default function AddTaskModal({
           notes: notes.trim(),
         });
       } else {
-        await api.createAcademyTask({
+        savedTask = await api.createAcademyTask({
           title: title.trim(),
           subjectId,
           dueDate,
@@ -107,7 +108,7 @@ export default function AddTaskModal({
           notes: notes.trim(),
         });
       }
-      onTaskCreated();
+      onTaskCreated(savedTask);
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save task');

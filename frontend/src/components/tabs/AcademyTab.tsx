@@ -22,9 +22,9 @@ export default function AcademyTab() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | undefined>(undefined);
   const [editingTask, setEditingTask] = useState<AcademyTask | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       setError(null);
       const [subsRes, tasksRes] = await Promise.all([
         api.getAcademySubjects(),
@@ -36,12 +36,12 @@ export default function AcademyTab() {
       setSubjects([]);
       setTasks([]);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, []);
 
   const handleStatusChange = async (taskId: string, newStatus: AcademyTaskStatus) => {
@@ -50,9 +50,9 @@ export default function AcademyTab() {
         prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
       );
       await api.updateAcademyTask(taskId, { status: newStatus });
-      loadData();
+      loadData(false);
     } catch {
-      loadData();
+      loadData(false);
     }
   };
 
@@ -61,7 +61,7 @@ export default function AcademyTab() {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
       await api.deleteAcademyTask(taskId);
     } catch {
-      loadData();
+      loadData(false);
     }
   };
 
@@ -69,9 +69,9 @@ export default function AcademyTab() {
     try {
       setSubjects((prev) => prev.filter((s) => s._id !== subjectId));
       await api.deleteAcademySubject(subjectId);
-      loadData();
+      loadData(false);
     } catch {
-      loadData();
+      loadData(false);
     }
   };
 
@@ -87,6 +87,21 @@ export default function AcademyTab() {
     setIsTaskModalOpen(true);
   };
 
+  const handleTaskSaved = (savedTask?: AcademyTask) => {
+    if (savedTask) {
+      setTasks((prev) => {
+        const idx = prev.findIndex((t) => t._id === savedTask._id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = savedTask;
+          return next;
+        }
+        return [savedTask, ...prev];
+      });
+    }
+    loadData(false);
+  };
+
   const handleSubjectSaved = (newSub: Subject) => {
     setSubjects((prev) => {
       const idx = prev.findIndex((s) => s._id === newSub._id);
@@ -97,6 +112,7 @@ export default function AcademyTab() {
       }
       return [...prev, newSub];
     });
+    loadData(false);
   };
 
   return (
@@ -185,7 +201,7 @@ export default function AcademyTab() {
           setIsTaskModalOpen(false);
           setEditingTask(null);
         }}
-        onTaskCreated={loadData}
+        onTaskCreated={handleTaskSaved}
         onSubjectCreated={handleSubjectSaved}
       />
 

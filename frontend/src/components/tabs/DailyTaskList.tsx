@@ -546,8 +546,8 @@ export default function DailyTaskList({
               </button>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start pt-1">
-              {splitCategoryGroupsIntoColumns(groupExercisesByCategory(workout.exercises), 3).map(
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start pt-1">
+              {splitCategoryGroupsIntoColumns(groupExercisesByCategory(workout.exercises), 2).map(
                 (colGroups, colIdx) => (
                   <div key={colIdx} className="space-y-4">
                     {colGroups.map((group) => (

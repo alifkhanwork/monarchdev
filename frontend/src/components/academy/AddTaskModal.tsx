@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AcademyTaskStatus, Subject } from '@/types';
+import type { AcademyTask, AcademyTaskStatus, Subject } from '@/types';
 import { api } from '@/lib/api';
 
 interface AddTaskModalProps {
@@ -9,6 +9,7 @@ interface AddTaskModalProps {
   subjects: Subject[];
   initialDueDate?: string;
   initialSubjectId?: string;
+  editingTask?: AcademyTask | null;
   onClose: () => void;
   onTaskCreated: () => void;
   onSubjectCreated?: (subject: Subject) => void;
@@ -30,35 +31,40 @@ export default function AddTaskModal({
   subjects,
   initialDueDate,
   initialSubjectId,
+  editingTask,
   onClose,
   onTaskCreated,
   onSubjectCreated,
 }: AddTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState(
-    initialSubjectId || subjects[0]?._id || ''
-  );
-  const [dueDate, setDueDate] = useState(
-    initialDueDate || new Date().toISOString().slice(0, 10)
-  );
-
-  useEffect(() => {
-    if (isOpen) {
-      if (initialSubjectId) {
-        setSubjectId(initialSubjectId);
-      } else if (subjects.length > 0 && !subjectId) {
-        setSubjectId(subjects[0]._id);
-      }
-      if (initialDueDate) {
-        setDueDate(initialDueDate);
-      }
-    }
-  }, [isOpen, initialSubjectId, initialDueDate, subjects]);
+  const [subjectId, setSubjectId] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
   const [status, setStatus] = useState<AcademyTaskStatus>('To Do');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingTask) {
+        setTitle(editingTask.title);
+        const subId = typeof editingTask.subject === 'object' ? editingTask.subject._id : editingTask.subject;
+        setSubjectId(subId || subjects[0]?._id || '');
+        setDueDate(editingTask.dueDate || new Date().toISOString().slice(0, 10));
+        setDueTime(editingTask.dueTime || '');
+        setStatus(editingTask.status || 'To Do');
+        setNotes(editingTask.notes || '');
+      } else {
+        setTitle('');
+        setSubjectId(initialSubjectId || subjects[0]?._id || '');
+        setDueDate(initialDueDate || new Date().toISOString().slice(0, 10));
+        setDueTime('');
+        setStatus('To Do');
+        setNotes('');
+      }
+    }
+  }, [isOpen, editingTask, initialSubjectId, initialDueDate, subjects]);
 
   // Inline subject creation state
   const [showSubjectForm, setShowSubjectForm] = useState(false);
@@ -82,18 +88,29 @@ export default function AddTaskModal({
     try {
       setLoading(true);
       setError(null);
-      await api.createAcademyTask({
-        title,
-        subjectId,
-        dueDate,
-        dueTime,
-        status,
-        notes,
-      });
+      if (editingTask) {
+        await api.updateAcademyTask(editingTask._id, {
+          title: title.trim(),
+          subjectId,
+          dueDate,
+          dueTime: dueTime.trim(),
+          status,
+          notes: notes.trim(),
+        });
+      } else {
+        await api.createAcademyTask({
+          title: title.trim(),
+          subjectId,
+          dueDate,
+          dueTime: dueTime.trim(),
+          status,
+          notes: notes.trim(),
+        });
+      }
       onTaskCreated();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create task');
+      setError(err instanceof Error ? err.message : 'Failed to save task');
     } finally {
       setLoading(false);
     }
@@ -132,7 +149,7 @@ export default function AddTaskModal({
           <div>
             <p className="panel-label mb-0.5">The Academy</p>
             <h3 className="text-lg font-bold text-white tracking-wide">
-              Add New Assignment / Task
+              {editingTask ? 'Edit Assignment' : 'Add New Assignment / Task'}
             </h3>
           </div>
           <button
@@ -300,7 +317,7 @@ export default function AddTaskModal({
               disabled={loading}
               className="journal-action-btn text-xs"
             >
-              {loading ? 'Saving...' : 'Add Task'}
+              {loading ? 'Saving...' : editingTask ? 'Save Changes' : 'Add Task'}
             </button>
           </div>
         </form>

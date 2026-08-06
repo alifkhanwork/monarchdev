@@ -7,6 +7,7 @@ interface AcademyCalendarViewProps {
   subjects: Subject[];
   onToggleTaskStatus: (taskId: string, currentStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask?: (task: AcademyTask) => void;
   onOpenAddModalWithDate: (dateKey: string) => void;
 }
 
@@ -17,6 +18,7 @@ export default function AcademyCalendarView({
   subjects,
   onToggleTaskStatus,
   onDeleteTask,
+  onEditTask,
   onOpenAddModalWithDate,
 }: AcademyCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -202,6 +204,7 @@ export default function AcademyCalendarView({
         onClose={() => setSelectedDayKey(null)}
         onToggleStatus={onToggleTaskStatus}
         onDeleteTask={onDeleteTask}
+        onEditTask={onEditTask}
         onAddTaskForDate={onOpenAddModalWithDate}
       />
     </div>

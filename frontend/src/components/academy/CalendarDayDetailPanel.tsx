@@ -10,6 +10,7 @@ interface CalendarDayDetailPanelProps {
   onClose: () => void;
   onToggleStatus: (taskId: string, currentStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask?: (task: AcademyTask) => void;
   onAddTaskForDate: (dateKey: string) => void;
 }
 
@@ -128,19 +129,38 @@ export default function CalendarDayDetailPanel({
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => onDeleteTask(task._id)}
-                        className="text-slate-500 hover:text-red-400 text-xs"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onEditTask?.(task);
+                          }}
+                          className="text-slate-500 hover:text-cyan-400 text-xs px-0.5"
+                          title="Edit Task"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteTask(task._id)}
+                          className="text-slate-500 hover:text-red-400 text-xs px-0.5"
+                          title="Delete Task"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
 
                     <p
-                      className={`text-xs font-semibold ${
+                      onClick={() => {
+                        onClose();
+                        onEditTask?.(task);
+                      }}
+                      className={`text-xs font-semibold cursor-pointer hover:text-cyan-300 transition-colors ${
                         isDone ? 'line-through text-slate-400' : 'text-slate-100'
                       }`}
+                      title="Click to edit task"
                     >
                       {task.title}
                     </p>

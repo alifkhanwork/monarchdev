@@ -8,6 +8,7 @@ interface AcademyListViewProps {
   subjects: Subject[];
   onStatusChange: (taskId: string, newStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask?: (task: AcademyTask) => void;
   onAddTask: () => void;
   onAddTaskForSubject?: (subjectId: string) => void;
   onAddSubject: () => void;
@@ -240,19 +241,32 @@ export default function AcademyListView({
                             >
                               <div className="flex items-start justify-between gap-1.5">
                                 <p
-                                  className={`text-xs font-semibold ${
+                                  onClick={() => onEditTask?.(task)}
+                                  className={`text-xs font-semibold cursor-pointer hover:text-cyan-300 transition-colors ${
                                     isDone ? 'line-through text-slate-500' : 'text-slate-200'
                                   }`}
+                                  title="Click to edit task"
                                 >
                                   {task.title}
                                 </p>
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteTask(task._id)}
-                                  className="text-slate-500 hover:text-red-400 text-[11px]"
-                                >
-                                  ✕
-                                </button>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => onEditTask?.(task)}
+                                    className="text-slate-500 hover:text-cyan-400 text-[11px] px-0.5"
+                                    title="Edit Task"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onDeleteTask(task._id)}
+                                    className="text-slate-500 hover:text-red-400 text-[11px] px-0.5"
+                                    title="Delete Task"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
                               </div>
 
                               <div className="flex items-center justify-between pt-1 border-t border-slate-900">
@@ -362,9 +376,11 @@ export default function AcademyListView({
                           </div>
 
                           <p
-                            className={`text-xs font-semibold text-slate-100 ${
+                            onClick={() => onEditTask?.(task)}
+                            className={`text-xs font-semibold text-slate-100 cursor-pointer hover:text-cyan-300 transition-colors ${
                               task.status === 'Completed' ? 'line-through text-slate-400' : ''
                             }`}
+                            title="Click to edit task"
                           >
                             {task.title}
                           </p>

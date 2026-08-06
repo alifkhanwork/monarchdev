@@ -667,13 +667,14 @@ export default function DailyTaskList({
                                     </span>
                                   </span>
                                   <span
-                                    className={`flex-1 min-w-0 text-[13px] sm:text-sm truncate ${
+                                    className={`flex-1 min-w-0 text-[13px] sm:text-sm ${
                                       exercise.completed ? 'line-through text-slate-500' : 'text-white'
                                     }`}
+                                    title={exercise.name}
                                   >
                                     {exercise.name}
                                     {exercise.currentWeightKg != null && (
-                                      <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5">
+                                      <span className="text-neon-teal/80 font-mono-data text-[11px] ml-1.5 shrink-0 whitespace-nowrap">
                                         {formatWeight(exercise.currentWeightKg, weightUnit)}
                                       </span>
                                     )}
@@ -769,10 +770,10 @@ function StrengthExerciseRow({
       >
         {/* Row Header */}
         <div
-          className="flex items-center justify-between gap-2 cursor-pointer select-none"
+          className="flex items-start justify-between gap-2 cursor-pointer select-none"
           onClick={() => setExpanded(!expanded)}
         >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
             <button
               type="button"
               onClick={(e) => {
@@ -780,37 +781,40 @@ function StrengthExerciseRow({
                 onToggleExercise(workoutId, exercise._id);
               }}
               disabled={isFrozen || workoutSyncing}
-              className="quest-hit -ml-1"
+              className="quest-hit -ml-1 shrink-0 mt-0.5"
             >
               <span className={`quest-checkbox ${isAllDone ? 'quest-checkbox-done' : ''}`}>
                 {isAllDone && '✓'}
               </span>
             </button>
 
-            <span
-              className={`text-[13px] sm:text-sm font-semibold truncate ${
-                isAllDone ? 'line-through text-slate-500' : 'text-white'
-              }`}
-            >
-              {exercise.name}
-            </span>
-
-            {exercise.currentWeightKg != null && (
-              <span className="text-neon-teal/90 font-mono-data text-[11px] px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
-                {formatWeight(exercise.currentWeightKg, weightUnit)}
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1 pt-0.5">
+              <span
+                title={exercise.name}
+                className={`text-[13px] sm:text-sm font-semibold break-words ${
+                  isAllDone ? 'line-through text-slate-500' : 'text-white'
+                }`}
+              >
+                {exercise.name}
               </span>
-            )}
 
-            {/* Gold PR Badge */}
-            {exercise.isPR && (
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/60 text-amber-300 font-bold font-mono-data text-[10px] shadow-sm shadow-amber-500/30 animate-pulse">
-                🏆 PR
-              </span>
-            )}
+              {exercise.currentWeightKg != null && (
+                <span className="text-neon-teal/90 font-mono-data text-[11px] px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30 shrink-0 whitespace-nowrap">
+                  {formatWeight(exercise.currentWeightKg, weightUnit)}
+                </span>
+              )}
+
+              {/* Gold PR Badge */}
+              {exercise.isPR && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/60 text-amber-300 font-bold font-mono-data text-[10px] shadow-sm shadow-amber-500/30 animate-pulse shrink-0 whitespace-nowrap">
+                  🏆 PR
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="px-2 py-0.5 rounded-full font-mono-data text-[10px] font-bold border border-slate-700 bg-slate-950 text-slate-300">
+          <div className="flex items-center gap-2 shrink-0 pt-0.5">
+            <span className="px-2 py-0.5 rounded-full font-mono-data text-[10px] font-bold border border-slate-700 bg-slate-950 text-slate-300 shrink-0 whitespace-nowrap">
               {completedSetCount}/5 sets
             </span>
             <span className="text-xs text-slate-400">{expanded ? '▲' : '▼'}</span>

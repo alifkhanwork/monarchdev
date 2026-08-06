@@ -20,6 +20,7 @@ export default function AcademyTab() {
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [selectedDueDate, setSelectedDueDate] = useState<string | undefined>(undefined);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | undefined>(undefined);
+  const [editingTask, setEditingTask] = useState<AcademyTask | null>(null);
 
   const loadData = async () => {
     try {
@@ -75,8 +76,14 @@ export default function AcademyTab() {
   };
 
   const handleOpenTaskModal = (dateKey?: string, subjectId?: string) => {
+    setEditingTask(null);
     setSelectedDueDate(dateKey);
     setSelectedSubjectId(subjectId);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleEditTask = (task: AcademyTask) => {
+    setEditingTask(task);
     setIsTaskModalOpen(true);
   };
 
@@ -150,6 +157,7 @@ export default function AcademyTab() {
           subjects={subjects}
           onStatusChange={handleStatusChange}
           onDeleteTask={handleDeleteTask}
+          onEditTask={handleEditTask}
           onAddTask={() => handleOpenTaskModal()}
           onAddTaskForSubject={(subjectId) => handleOpenTaskModal(undefined, subjectId)}
           onAddSubject={() => setIsSubjectModalOpen(true)}
@@ -161,17 +169,22 @@ export default function AcademyTab() {
           subjects={subjects}
           onToggleTaskStatus={handleStatusChange}
           onDeleteTask={handleDeleteTask}
+          onEditTask={handleEditTask}
           onOpenAddModalWithDate={(dateKey) => handleOpenTaskModal(dateKey)}
         />
       )}
 
-      {/* Add Task Modal */}
+      {/* Add / Edit Task Modal */}
       <AddTaskModal
         isOpen={isTaskModalOpen}
         subjects={subjects}
         initialDueDate={selectedDueDate}
         initialSubjectId={selectedSubjectId}
-        onClose={() => setIsTaskModalOpen(false)}
+        editingTask={editingTask}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTask(null);
+        }}
         onTaskCreated={loadData}
         onSubjectCreated={handleSubjectSaved}
       />

@@ -4,6 +4,7 @@ import CalendarDayDetailPanel from './CalendarDayDetailPanel';
 
 interface AcademyCalendarViewProps {
   tasks: AcademyTask[];
+  subjects?: Subject[];
   onToggleTaskStatus: (taskId: string, currentStatus: AcademyTaskStatus) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask?: (task: AcademyTask) => void;

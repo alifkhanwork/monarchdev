@@ -240,30 +240,6 @@ export default function DailyTaskList({
   const isRecovery = Boolean(workout?.isRecovery);
   const [showRestTimer, setShowRestTimer] = useState(false);
 
-  const handleSetLogged = async (
-    workoutId: string,
-    exerciseId: string,
-    setNumber: number,
-    weightKg?: number | null,
-    reps?: number
-  ) => {
-    try {
-      const res = await api.logExerciseSet(workoutId, exerciseId, {
-        setNumber,
-        weightKg,
-        reps,
-        completed: true,
-      });
-      // Trigger rest timer for strength sets
-      setShowRestTimer(true);
-      if (res.isPR) {
-        alert('🏆 NEW PERSONAL RECORD! Gold PR Badge unlocked.');
-      }
-    } catch (e: unknown) {
-      console.error('Failed to log set:', e);
-    }
-  };
-
   const handleTaskClick = (task: DailyTask) => {
     if (isFrozen || completingId) return;
 
@@ -690,24 +666,4 @@ export default function DailyTaskList({
       )}
     </div>
   );
-}
-
-function StrengthExerciseRow({
-  exercise,
-  workoutId,
-  isFrozen,
-  workoutSyncing,
-  weightUnit,
-  onToggleExercise,
-  onSetLogged: _onSetLogged,
-}: {
-  exercise: Exercise;
-  workoutId: string;
-  isFrozen?: boolean;
-  workoutSyncing?: boolean;
-  weightUnit?: WeightUnit;
-  onToggleExercise: (workoutId: string, exerciseId: string) => void;
-  onSetLogged?: (workoutId: string, exerciseId: string, setNumber: number, weightKg?: number | null, reps?: number) => void;
-}) {
-  return null;
 }

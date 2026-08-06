@@ -39,7 +39,9 @@ export default function AcademyListView({
   subjects,
   onStatusChange,
   onDeleteTask,
+  onEditTask,
   onAddTask,
+  onAddTaskForSubject,
   onAddSubject,
   onDeleteSubject,
 }: AcademyListViewProps) {

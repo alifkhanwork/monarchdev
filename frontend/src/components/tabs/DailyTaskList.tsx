@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import type { DailyTask, DayStatusInfo, Exercise, GroupedTasks, Workout } from '@/types';
 import DayStatusSelect from './DayStatusSelect';
 import { formatWeight, type WeightUnit } from '@/lib/weightUnits';

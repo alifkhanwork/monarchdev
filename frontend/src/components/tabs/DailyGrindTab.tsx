@@ -20,9 +20,6 @@ import {
 } from '@/lib/customQuestsStorage';
 import { getTodayKey } from '@/lib/journalStorage';
 
-const CUSTOM_COLLAPSE_KEY = 'the-system-daily-custom-collapse';
-const CUSTOM_SECTION = 'Custom Quests';
-
 interface DailyGrindTabProps {
   user: User;
   dailies: DailiesResponse;
@@ -101,7 +98,6 @@ export default function DailyGrindTab({
   const refreshCustom = () => setCustomQuests(loadCustomQuestsForDate(todayKey));
 
   const customDone = customQuests.filter((q) => isCustomQuestCompleted(q.id, todayKey)).length;
-  const customIncomplete = customQuests.length - customDone;
 
 
   return (

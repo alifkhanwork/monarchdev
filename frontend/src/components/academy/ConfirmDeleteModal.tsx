@@ -46,7 +46,7 @@ export default function ConfirmDeleteModal({
         <div>
           <h3 className="text-base font-bold text-white tracking-wide">{title}</h3>
           <p className="text-xs text-slate-300 mt-1">
-            Are you sure you want to delete <span className="font-semibold text-white">"{itemName}"</span>?
+            Are you sure you want to delete <span className="font-semibold text-white">&quot;{itemName}&quot;</span>?
           </p>
           {message && (
             <p className="text-[11px] text-red-400/90 mt-1 font-mono-data">

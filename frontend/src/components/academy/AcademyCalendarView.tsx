@@ -15,7 +15,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AcademyCalendarView({
   tasks,
-  subjects,
+  subjects: _subjects,
   onToggleTaskStatus,
   onDeleteTask,
   onEditTask,

@@ -9,6 +9,23 @@ interface UpcomingDeadlinesCardProps {
   daysWindow?: number; // default 3
 }
 
+function formatDateReadable(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length < 3) return dateStr;
+    const [y, m, d] = parts;
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function UpcomingDeadlinesCard({
   onGoToAcademy,
   daysWindow = 3,
@@ -145,8 +162,11 @@ export default function UpcomingDeadlinesCard({
                 </span>
               </div>
 
-              {/* Right side: Countdown label */}
-              <div className="shrink-0 text-right">
+              {/* Right side: Readable date & countdown label */}
+              <div className="shrink-0 text-right flex flex-col items-end">
+                <span className="text-[10px] font-mono-data text-slate-400">
+                  {formatDateReadable(task.dueDate)}
+                </span>
                 <span className={`text-[11px] font-mono-data ${countdown.colorClass}`}>
                   {countdown.text}
                 </span>

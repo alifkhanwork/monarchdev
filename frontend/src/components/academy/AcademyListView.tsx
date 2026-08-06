@@ -16,6 +16,23 @@ interface AcademyListViewProps {
 
 type ViewMode = 'subject' | 'kanban';
 
+function formatDateReadable(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length < 3) return dateStr;
+    const [y, m, d] = parts;
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function AcademyListView({
   tasks,
   subjects,
@@ -240,7 +257,7 @@ export default function AcademyListView({
 
                               <div className="flex items-center justify-between pt-1 border-t border-slate-900">
                                 <span className="text-[10px] font-mono-data text-slate-400">
-                                  📅 {task.dueDate}
+                                  📅 {formatDateReadable(task.dueDate)}
                                 </span>
 
                                 <button
@@ -340,7 +357,7 @@ export default function AcademyListView({
                               {subName}
                             </span>
                             <span className="text-[10px] font-mono-data text-slate-400">
-                              📅 {task.dueDate} {task.dueTime ? `· 🕒 ${task.dueTime}` : ''}
+                              📅 {formatDateReadable(task.dueDate)} {task.dueTime ? `· 🕒 ${task.dueTime}` : ''}
                             </span>
                           </div>
 
